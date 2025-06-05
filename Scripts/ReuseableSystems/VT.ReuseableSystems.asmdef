@@ -1,0 +1,14 @@
+{
+    "name": "VT.ReuseableSystems",
+    "rootNamespace": "VT.ReuseableSystems",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
