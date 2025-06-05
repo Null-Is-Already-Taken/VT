@@ -1,0 +1,188 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.RegularExpressions;
+using Codice.Client.BaseCommands.WkStatus.Printers;
+using UnityEditor;
+using UnityEngine;
+
+#if UNITY_EDITOR
+namespace VT.IO
+{
+    /// <summary>
+    /// A utility class for handling file and directory operations in Unity.
+    /// Supports relative paths, absolute paths, and path macros like #persistent, #data, #streaming, etc.
+    /// </summary>
+    public static class IOManager
+    {
+        /// <summary>
+        /// Default root path used when relative paths are provided without macros.
+        /// </summary>
+        public static string RootPath => Application.dataPath;
+
+        /// <summary>
+        /// Macros that map to commonly used Unity directories.
+        /// </summary>
+        private static readonly Dictionary<string, Func<string>> MacroPaths = new()
+        {
+            {"#persistent", () => Application.persistentDataPath},          // Persistent storage path
+            {"#data",       () => Application.dataPath},                    // Assets folder
+            {"#streaming",  () => Application.streamingAssetsPath},         // StreamingAssets
+            {"#temp",       () => Application.temporaryCachePath},          // Temporary cache
+            {"#project",    () => Path.GetFullPath(Path.Combine(Application.dataPath, ".."))} // Root of project
+        };
+
+        /// <summary>
+        /// Resolves a path by expanding macros and converting relative paths to absolute ones.
+        /// </summary>
+        /// <param name="path">Relative path, absolute path, or macro-based path.</param>
+        /// <returns>Resolved absolute path.</returns>
+        public static string ResolvePath(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return RootPath;
+
+            foreach (var (macro, resolver) in MacroPaths)
+            {
+                if (path.StartsWith(macro, StringComparison.OrdinalIgnoreCase))
+                {
+                    string suffix = path[macro.Length..].TrimStart('/', '\\');
+                    string combined = Path.Combine(resolver.Invoke(), suffix);
+                    return NormalizePathSeparators(combined);
+                }
+            }
+
+            string fullPath = Path.IsPathRooted(path) ? path : Path.Combine(RootPath, path);
+            return NormalizePathSeparators(fullPath);
+        }
+
+        /// <summary>
+        /// Normalizes the directory separators in a file path to match the current platform's separator.
+        /// Replaces all forward and backward slashes with the platform-specific separator,
+        /// and removes any duplicate separators.
+        /// </summary>
+        /// <param name="path">The file path to normalize.</param>
+        /// <returns>
+        /// A normalized file path string with consistent directory separators,
+        /// or the original string if it is null or empty.
+        /// </returns>
+        public static string NormalizePathSeparators(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return path;
+
+            char sep = Path.DirectorySeparatorChar;
+
+            // Replace all slashes with the current platform's separator
+            string unified = path.Replace('\\', sep).Replace('/', sep);
+
+            // Remove duplicate slashes (e.g., "//" or "\\")
+            return Regex.Replace(unified, $"{Regex.Escape(sep.ToString())}+", sep.ToString());
+        }
+
+
+        /// <summary>
+        /// Checks if a file exists at the specified path.
+        /// </summary>
+        public static bool FileExists(string path) => File.Exists(ResolvePath(path));
+
+        /// <summary>
+        /// Checks if a directory exists at the specified path.
+        /// </summary>
+        public static bool DirectoryExists(string path) => Directory.Exists(ResolvePath(path));
+
+        /// <summary>
+        /// Creates a directory at the specified path if it does not exist.
+        /// </summary>
+        public static void CreateDirectory(string path)
+        {
+            string fullPath = ResolvePath(path);
+            if (!Directory.Exists(fullPath))
+                Directory.CreateDirectory(fullPath);
+        }
+
+        /// <summary>
+        /// Creates a directory at the specified path if it does not exist.
+        /// </summary>
+        public static void CreateAssetDirectory(string parentDir, string newFolderName)
+        {
+            var newFolderPath = Path.Combine(parentDir, newFolderName);
+            newFolderPath = NormalizePathSeparators(newFolderPath);
+            if (!AssetDatabase.IsValidFolder(newFolderPath))
+                AssetDatabase.CreateFolder(parentDir, newFolderName);
+        }
+
+        /// <summary>
+        /// Deletes a file at the specified path if it exists.
+        /// </summary>
+        public static void DeleteFile(string path)
+        {
+            string fullPath = ResolvePath(path);
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
+        }
+
+        /// <summary>
+        /// Deletes a directory and all its contents at the specified path.
+        /// </summary>
+        public static void DeleteDirectory(string path)
+        {
+            string fullPath = ResolvePath(path);
+            if (Directory.Exists(fullPath))
+                Directory.Delete(fullPath, true);
+        }
+
+        /// <summary>
+        /// Saves string content to a file at the given path.
+        /// </summary>
+        public static void SaveText(string path, string content)
+        {
+            string fullPath = ResolvePath(path);
+            File.WriteAllText(fullPath, content);
+        }
+
+        /// <summary>
+        /// Loads string content from a file at the given path.
+        /// </summary>
+        public static string LoadText(string path)
+        {
+            string fullPath = ResolvePath(path);
+            return File.Exists(fullPath) ? File.ReadAllText(fullPath) : null;
+        }
+
+        /// <summary>
+        /// Saves binary data to a file at the given path.
+        /// </summary>
+        public static void SaveBinary(string path, byte[] data)
+        {
+            string fullPath = ResolvePath(path);
+            File.WriteAllBytes(fullPath, data);
+        }
+
+        /// <summary>
+        /// Loads binary data from a file at the given path.
+        /// </summary>
+        public static byte[] LoadBinary(string path)
+        {
+            string fullPath = ResolvePath(path);
+            return File.Exists(fullPath) ? File.ReadAllBytes(fullPath) : null;
+        }
+
+        /// <summary>
+        /// Serializes an object to JSON and saves it to the given path.
+        /// </summary>
+        public static void SaveJson<T>(string path, T data)
+        {
+            string json = JsonUtility.ToJson(data, prettyPrint: true);
+            SaveText(path, json);
+        }
+
+        /// <summary>
+        /// Loads JSON from a file and deserializes it into an object of type T.
+        /// </summary>
+        public static T LoadJson<T>(string path)
+        {
+            string json = LoadText(path);
+            return !string.IsNullOrEmpty(json) ? JsonUtility.FromJson<T>(json) : default;
+        }
+    }
+}
+#endif

@@ -1,0 +1,17 @@
+{
+    "name": "VT.Utils.Logger",
+    "rootNamespace": "",
+    "references": [
+        "GUID:ed393b49ea24b4bb09c9af23f624d098",
+        "GUID:4d503d00534bc422daca68ea919fbf60"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

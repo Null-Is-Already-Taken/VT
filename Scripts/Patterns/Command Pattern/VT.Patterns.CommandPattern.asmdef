@@ -1,0 +1,14 @@
+{
+    "name": "VT.Patterns.CommandPattern",
+    "rootNamespace": "VT.Patterns.CommandPattern",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

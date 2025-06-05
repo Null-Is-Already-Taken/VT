@@ -1,0 +1,18 @@
+{
+    "name": "VT.ReuseableSystems.UI.Legacy",
+    "rootNamespace": "VT.ReuseableSystems.UI.Legacy",
+    "references": [
+        "GUID:ed393b49ea24b4bb09c9af23f624d098",
+        "GUID:e30a6b1ab9eda4beb86a64d9df240d4e",
+        "GUID:6961f3922d47b4267a552dfdc49bb187"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,18 @@
+{
+    "name": "VT.PathFinding.BFS",
+    "rootNamespace": "VT.PathFinding.BFS",
+    "references": [
+        "GUID:fc10028de9b7144ab852f26a3adb393b",
+        "GUID:1937b1440b3a84bcf8042f38e7c0e1de",
+        "GUID:e4f43ae1f43a645c982ec977a8cc6fdd"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

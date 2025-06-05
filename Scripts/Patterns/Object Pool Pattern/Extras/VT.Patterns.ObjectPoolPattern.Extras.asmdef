@@ -1,0 +1,17 @@
+{
+    "name": "VT.Patterns.ObjectPoolPattern.Extras",
+    "rootNamespace": "VT.Patterns.ObjectPoolPattern.Extras",
+    "references": [
+        "GUID:b463ff50b05e5c34cb5240ad196e009c",
+        "GUID:ed393b49ea24b4bb09c9af23f624d098"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

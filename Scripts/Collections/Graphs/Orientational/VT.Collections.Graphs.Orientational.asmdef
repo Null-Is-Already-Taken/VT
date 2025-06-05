@@ -1,0 +1,16 @@
+{
+    "name": "VT.Collections.Graphs.Orientational",
+    "rootNamespace": "VT.Collections.Graphs.Orientational",
+    "references": [
+        "GUID:1937b1440b3a84bcf8042f38e7c0e1de"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

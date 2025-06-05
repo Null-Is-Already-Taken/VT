@@ -1,0 +1,17 @@
+{
+    "name": "VT.Generic.Visualization",
+    "rootNamespace": "VT.Generic.Visualization",
+    "references": [
+        "GUID:1ab9392cda35d4322997cdaeba3c9420",
+        "GUID:5762dc237a8ce4044ac3d55dde8d8f64"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

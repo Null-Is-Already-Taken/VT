@@ -1,0 +1,14 @@
+{
+    "name": "VT.Patterns.ObjectPoolPattern",
+    "rootNamespace": "VT.Patterns.ObjectPoolPattern",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

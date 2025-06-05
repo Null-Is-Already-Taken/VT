@@ -1,0 +1,17 @@
+{
+    "name": "VT.Tools.ScriptCreator",
+    "rootNamespace": "VT.Tools.ScriptCreator",
+    "references": [
+        "GUID:2e7bb7489641548f1b3f16d42319f968",
+        "GUID:0eee06183e3963f448a88847dbe6e357"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
