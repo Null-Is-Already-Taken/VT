@@ -1,0 +1,11 @@
+{
+	"name": "com.xstudio-interactive.vt",
+	"version": "1.0.0",
+	"displayName": "VT",
+	"discription": "Collection of tools & utilities for Unity",
+	"unity": "2022.1",
+	"author": {
+		"name": "Vi Tiet",
+		"email": "vitiet.programmer@gmail.com"
+	}
+}
