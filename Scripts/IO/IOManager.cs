@@ -102,6 +102,17 @@ namespace VT.IO
         }
 
         /// <summary>
+        /// Creates a directory at the specified path if it does not exist.
+        /// </summary>
+        public static void CreateAssetDirectory(string parentDir, string newFolderName)
+        {
+            var newFolderPath = Path.Combine(parentDir, newFolderName);
+            newFolderPath = NormalizePathSeparators(newFolderPath);
+            if (!AssetDatabase.IsValidFolder(newFolderPath))
+                AssetDatabase.CreateFolder(parentDir, newFolderName);
+        }
+
+        /// <summary>
         /// Deletes a file at the specified path if it exists.
         /// </summary>
         public static void DeleteFile(string path)
