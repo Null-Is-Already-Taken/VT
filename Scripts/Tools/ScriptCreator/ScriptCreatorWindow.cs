@@ -44,7 +44,7 @@ namespace VT.Tools.ScriptCreator
 
         private void LoadDefaultScript()
         {
-            if (string.IsNullOrWhiteSpace(scriptFilePath))
+            //if (string.IsNullOrWhiteSpace(scriptFilePath))
             {
                 scriptContent = string.Empty;
                 return;
@@ -67,7 +67,7 @@ namespace VT.Tools.ScriptCreator
             sb.AppendLine($"{Tab()}}}");
             sb.AppendLine("}");
 
-        scriptContent = IOManager.LoadText(scriptFilePath);
+            //scriptContent = IOManager.LoadText(scriptFilePath);
         }
 
         [Button(ButtonSizes.Large)]
