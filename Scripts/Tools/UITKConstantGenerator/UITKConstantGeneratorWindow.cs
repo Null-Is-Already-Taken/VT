@@ -55,7 +55,7 @@ namespace VT.Tools.UITKConstantGenerator
                 outputPath = IOManager.NormalizePathSeparators(outputPath);
 
                 string generatedContent = UITKConstantGeneratorAPI.GenerateClassContent(uxmlPath, className, useWrapperConstant: useWrapperConstant);
-                previewItems.Add(new PreviewItem(uxmlPath, outputPath, generatedContent));
+                previewItems.Add(new UITKCodePreview(uxmlPath, outputPath, generatedContent));
             }
 
             InternalLogger.Instance.LogDebug($"[UIConstantGen] Preview generated for {previewItems.Count} files.");
@@ -63,7 +63,7 @@ namespace VT.Tools.UITKConstantGenerator
 
         [ShowInInspector, LabelText("Preview")]
         [ListDrawerSettings(DraggableItems = false, ShowIndexLabels = false)]
-        private List<PreviewItem> previewItems = new();
+        private List<UITKCodePreview> previewItems = new();
 
         [Button("Clear All", ButtonSizes.Large)]
         [GUIColor(1.0f, 0.9f, 0.5f)]
@@ -94,25 +94,6 @@ namespace VT.Tools.UITKConstantGenerator
             UITKConstantTrackerHelper.SaveTrackingData(trackingData);
             AssetDatabase.Refresh();
             InternalLogger.Instance.LogDebug("[UIConstantGen] All constants saved.");
-        }
-
-        // Preview data class
-        class PreviewItem
-        {
-            [ReadOnly] public string UxmlPath;
-            [ReadOnly] public string OutputPath;
-            [HideInInspector] public string GeneratedCode;
-
-            public string File => Path.GetFileName(UxmlPath);
-            [TextArea(15, 30)] public string Code;
-
-            public PreviewItem(string uxmlPath, string outputPath, string code)
-            {
-                UxmlPath = uxmlPath;
-                OutputPath = outputPath;
-                GeneratedCode = code;
-                Code = code;
-            }
         }
 
         [MenuItem("Tools/UI Constant Generator")]
