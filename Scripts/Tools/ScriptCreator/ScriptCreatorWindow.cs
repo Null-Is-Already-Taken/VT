@@ -5,6 +5,7 @@ using Sirenix.OdinInspector;
 using Sirenix.OdinInspector.Editor;
 using Sirenix.Utilities.Editor;
 using System.IO;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
 using VT.IO;
@@ -29,12 +30,6 @@ namespace VT.Tools.ScriptCreator
         [OnValueChanged(nameof(OnFolderPathChanged))]
         public string folderPath = "Assets/Scripts";
 
-        // —— NEW FILE-LOADER FIELD ——
-        [LabelText("Load From .txt File")]
-        [Sirenix.OdinInspector.FilePath(Extensions = ".txt", AbsolutePath = false, ParentFolder = "Assets")]
-        [OnValueChanged(nameof(OnScriptFilePathChanged))]
-        public string scriptFilePath = "VT/Scripts/Tools/ScriptCreator/DefaultScript.txt";
-
         [LabelText("Script Content")]
         [TextArea(15, 50)]
         public string scriptContent;
@@ -47,28 +42,32 @@ namespace VT.Tools.ScriptCreator
             }
         }
 
-        // —— CALLED WHEN YOU PICK OR CHANGE THE .txt PATH ——
-        private void OnScriptFilePathChanged()
-        {
-            var txt = LoadDefaultScript();
-
-            if (txt != null)
-            {
-                scriptContent = txt;
-            }
-            else
-            {
-                InternalLogger.Instance.LogWarning($"[ScriptCreator] File not found at: {scriptFilePath}");
-            }
-        }
-
-        private string LoadDefaultScript()
+        private void LoadDefaultScript()
         {
             if (string.IsNullOrWhiteSpace(scriptFilePath))
-                return null;
+            {
+                scriptContent = string.Empty;
+                return;
+            }
 
-            var txt = IOManager.LoadText(scriptFilePath);
-            return txt;
+            var sb = new StringBuilder();
+            sb.AppendLine("// AUTO-GENERATED FILE — Do not edit manually");
+            sb.AppendLine();
+            sb.AppendLine($"using UnityEngine;");
+            sb.AppendLine();
+            sb.AppendLine($"public class {CLASS_NAME_MACRO} : MonoBehaviour");
+            sb.AppendLine("{");
+            sb.AppendLine($"{Tab()}private void Start()");
+            sb.AppendLine($"{Tab()}{{");
+            sb.AppendLine();
+            sb.AppendLine($"{Tab()}}}");
+            sb.AppendLine($"{Tab()}private void Update()");
+            sb.AppendLine($"{Tab()}{{");
+            sb.AppendLine();
+            sb.AppendLine($"{Tab()}}}");
+            sb.AppendLine("}");
+
+        scriptContent = IOManager.LoadText(scriptFilePath);
         }
 
         [Button(ButtonSizes.Large)]
@@ -100,8 +99,8 @@ namespace VT.Tools.ScriptCreator
 
             if (scriptContent.IsNullOrEmpty())
             {
-                var defaultScript = LoadDefaultScript();
-                scriptContent = ApplyClassName(defaultScript, scriptName);
+                LoadDefaultScript();
+                scriptContent = ApplyClassName(scriptContent, scriptName);
 
                 InternalLogger.Instance.LogWarning("<b>Empty script content:</b> Loading default script.");
             }
@@ -123,8 +122,8 @@ namespace VT.Tools.ScriptCreator
         {
             var window = GetWindow<ScriptCreatorWindow>();
             Rect windowRect = GUIHelper.GetEditorWindowRect();
-            Vector2 vector = new Vector2(450f, Mathf.Min(windowRect.height * 0.7f, 500f));
-            Rect position = new Rect(windowRect.center - vector * 0.5f, vector);
+            Vector2 vector = new(450f, Mathf.Min(windowRect.height * 0.7f, 500f));
+            Rect position = new(windowRect.center - vector * 0.5f, vector);
             window.position = position;
             window.titleContent = new GUIContent("Script Creator");
             window.LoadDefaultScript(); // Load default script on open
@@ -147,6 +146,11 @@ namespace VT.Tools.ScriptCreator
         public static string ApplyClassName(string template, string className)
         {
             return ReplaceMacro(template, CLASS_NAME_MACRO, className);
+        }
+
+        private static string Tab(int tabCount = 1)
+        {
+            return new string('\t', tabCount);
         }
     }
 }

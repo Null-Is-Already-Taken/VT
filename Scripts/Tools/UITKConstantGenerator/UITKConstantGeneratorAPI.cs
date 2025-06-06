@@ -16,11 +16,8 @@ namespace VT.Tools.UITKConstantGenerator
 
             string content = File.ReadAllText(uxmlPath);
             var uniqueNames = new HashSet<string>();
+            ExtractElementNames(content, uniqueNames);
 
-            var nameMatches = Regex.Matches(content, "name=\"([^\"]+)\"");
-            foreach (Match match in nameMatches)
-                uniqueNames.Add(match.Groups[1].Value);
-            
             var uniqueIDs = new HashSet<string>();
             var uniqueClasses = new HashSet<string>();
             var styleMatches = Regex.Matches(content, "Style\\s+src=\"([^\"]+)\"");
@@ -34,16 +31,38 @@ namespace VT.Tools.UITKConstantGenerator
                 string ussContent = File.ReadAllText(ussPath);
 
                 // Match class selectors: .className {
-                var classMatches = Regex.Matches(ussContent, @"(?<=\.)[a-zA-Z0-9\-_]+(?=\s*\{)");
-                foreach (Match cls in classMatches)
-                    uniqueClasses.Add(cls.Value);
+                ExtractClassSelectors(uniqueClasses, ussContent);
 
                 // Match ID selectors: #ElementID {
-                var idMatches = Regex.Matches(ussContent, @"(?<=#)[a-zA-Z0-9\-_]+(?=\s*\{)");
-                foreach (Match id in idMatches)
-                    uniqueIDs.Add(id.Value);
+                ExtractIDSelectors(uniqueIDs, ussContent);
             }
 
+            return BuildConstantsClassContent(namespaceName, className, uniqueNames, uniqueClasses, uniqueIDs, useWrapperConstant);
+        }
+
+        private static void ExtractIDSelectors(HashSet<string> uniqueIDs, string ussContent)
+        {
+            var idMatches = Regex.Matches(ussContent, @"(?<=#)[a-zA-Z0-9\-_]+(?=\s*\{)");
+            foreach (Match id in idMatches)
+                uniqueIDs.Add(id.Value);
+        }
+
+        private static void ExtractClassSelectors(HashSet<string> uniqueClasses, string ussContent)
+        {
+            var classMatches = Regex.Matches(ussContent, @"(?<=\.)[a-zA-Z0-9\-_]+(?=\s*\{)");
+            foreach (Match cls in classMatches)
+                uniqueClasses.Add(cls.Value);
+        }
+
+        private static void ExtractElementNames(string content, HashSet<string> uniqueNames)
+        {
+            var nameMatches = Regex.Matches(content, "name=\"([^\"]+)\"");
+            foreach (Match match in nameMatches)
+                uniqueNames.Add(match.Groups[1].Value);
+        }
+
+        private static string BuildConstantsClassContent(string namespaceName, string className, HashSet<string> uniqueNames, HashSet<string> uniqueClasses, HashSet<string> uniqueIDs, bool useWrapperConstant)
+        {
             var sb = new StringBuilder();
             sb.AppendLine("// AUTO-GENERATED FILE — Do not edit manually");
             if (useWrapperConstant)
@@ -51,21 +70,19 @@ namespace VT.Tools.UITKConstantGenerator
             sb.AppendLine();
             sb.AppendLine($"namespace {namespaceName}");
             sb.AppendLine("{");
-            sb.AppendLine($"    public partial class {className}");
-            sb.AppendLine("    {");
-
-            // Switch generation mode to use UITKConstant instead of string
-            // bool USE_WRAPPER_CONSTANT = false;
+            sb.AppendLine($"{Tab()}public partial class {className}");
+            sb.AppendLine($"{Tab()}{{");
 
             // For <VisualElement name="..."> in UXML:
             foreach (var name in uniqueNames)
             {
                 string safe = Regex.Replace(name, @"[^\w]", "_");
 
+                // Switch generation mode to use UITKConstant instead of string
                 if (useWrapperConstant)
-                    sb.AppendLine($"        public readonly UITKConstant {safe}_ElementName = new(type: UITKConstantType.ElementName, value: \"{name}\");");
+                    sb.AppendLine($"{Tab(2)}public readonly UITKConstant {safe}_ElementName = new(type: UITKConstantType.ElementName, value: \"{name}\");");
                 else
-                    sb.AppendLine($"        public readonly string {safe}_ElementName = \"{name}\";");
+                    sb.AppendLine($"{Tab(2)}public readonly string {safe}_ElementName = \"{name}\";");
             }
 
             // For #ID selectors in USS:
@@ -73,10 +90,11 @@ namespace VT.Tools.UITKConstantGenerator
             {
                 string safe = Regex.Replace(id, @"[^\w]", "_");
 
+                // Switch generation mode to use UITKConstant instead of string
                 if (useWrapperConstant)
-                    sb.AppendLine($"        public readonly UITKConstant {safe}_StyleID = new(type: UITKConstantType.Selector, value: \"{id}\");");
+                    sb.AppendLine($"{Tab(2)}public readonly UITKConstant {safe}_StyleID = new(type: UITKConstantType.Selector, value: \"{id}\");");
                 else
-                    sb.AppendLine($"        public readonly string {safe}_StyleID = \"{id}\";");
+                    sb.AppendLine($"{Tab(2)}public readonly string {safe}_StyleID = \"{id}\";");
             }
 
             // For .class selectors in USS:
@@ -85,14 +103,19 @@ namespace VT.Tools.UITKConstantGenerator
                 string safe = Regex.Replace(cls, @"[^\w]", "_");
 
                 if (useWrapperConstant)
-                    sb.AppendLine($"        public readonly UITKConstant {safe}_StyleClass = new(type: UITKConstantType.Selector, value: \"{cls}\");");
+                    sb.AppendLine($"{Tab(2)}public readonly UITKConstant {safe}_StyleClass = new(type: UITKConstantType.Selector, value: \"{cls}\");");
                 else
-                    sb.AppendLine($"        public readonly string {safe}_StyleClass = \"{cls}\";");
+                    sb.AppendLine($"{Tab(2)}public readonly string {safe}_StyleClass = \"{cls}\";");
             }
 
-            sb.AppendLine("    }");
+            sb.AppendLine($"{Tab()}}}");
             sb.AppendLine("}");
             return sb.ToString();
+        }
+
+        private static string Tab(int tabCount = 1)
+        {
+            return new string('\t', tabCount);
         }
 
         public static string SanitizeClassName(string name)
