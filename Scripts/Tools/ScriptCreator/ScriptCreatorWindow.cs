@@ -85,6 +85,7 @@ namespace VT.Tools.ScriptCreator
                 Directory.CreateDirectory(folderPath);
 
             var filePath = Path.Combine(folderPath, scriptName + ".cs");
+            filePath = AssetDatabase.GenerateUniqueAssetPath(filePath);
 
             if (File.Exists(filePath))
             {
@@ -126,6 +127,7 @@ namespace VT.Tools.ScriptCreator
             Rect position = new Rect(windowRect.center - vector * 0.5f, vector);
             window.position = position;
             window.titleContent = new GUIContent("Script Creator");
+            window.LoadDefaultScript(); // Load default script on open
         }
 
         /// <summary>
