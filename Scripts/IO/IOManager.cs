@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
-using Codice.Client.BaseCommands.WkStatus.Printers;
 using UnityEditor;
 using UnityEngine;
 
@@ -23,37 +22,37 @@ namespace VT.IO
         /// <summary>
         /// Macros that map to commonly used Unity directories.
         /// </summary>
-        private static readonly Dictionary<string, Func<string>> MacroPaths = new()
-        {
-            {"#persistent", () => Application.persistentDataPath},          // Persistent storage path
-            {"#data",       () => Application.dataPath},                    // Assets folder
-            {"#streaming",  () => Application.streamingAssetsPath},         // StreamingAssets
-            {"#temp",       () => Application.temporaryCachePath},          // Temporary cache
-            {"#project",    () => Path.GetFullPath(Path.Combine(Application.dataPath, ".."))} // Root of project
-        };
+        //private static readonly Dictionary<string, Func<string>> MacroPaths = new()
+        //{
+        //    {"#persistent", () => Application.persistentDataPath},          // Persistent storage path
+        //    {"#data",       () => Application.dataPath},                    // Assets folder
+        //    {"#streaming",  () => Application.streamingAssetsPath},         // StreamingAssets
+        //    {"#temp",       () => Application.temporaryCachePath},          // Temporary cache
+        //    {"#project",    () => Path.GetFullPath(Path.Combine(Application.dataPath, ".."))} // Root of project
+        //};
 
         /// <summary>
         /// Resolves a path by expanding macros and converting relative paths to absolute ones.
         /// </summary>
         /// <param name="path">Relative path, absolute path, or macro-based path.</param>
         /// <returns>Resolved absolute path.</returns>
-        public static string ResolvePath(string path)
-        {
-            if (string.IsNullOrEmpty(path)) return RootPath;
+        //public static string ResolvePath(string path)
+        //{
+        //    if (string.IsNullOrEmpty(path)) return RootPath;
 
-            foreach (var (macro, resolver) in MacroPaths)
-            {
-                if (path.StartsWith(macro, StringComparison.OrdinalIgnoreCase))
-                {
-                    string suffix = path[macro.Length..].TrimStart('/', '\\');
-                    string combined = Path.Combine(resolver.Invoke(), suffix);
-                    return NormalizePathSeparators(combined);
-                }
-            }
+        //    foreach (var (macro, resolver) in MacroPaths)
+        //    {
+        //        if (path.StartsWith(macro, StringComparison.OrdinalIgnoreCase))
+        //        {
+        //            string suffix = path[macro.Length..].TrimStart('/', '\\');
+        //            string combined = Path.Combine(resolver.Invoke(), suffix);
+        //            return NormalizePathSeparators(combined);
+        //        }
+        //    }
 
-            string fullPath = Path.IsPathRooted(path) ? path : Path.Combine(RootPath, path);
-            return NormalizePathSeparators(fullPath);
-        }
+        //    string fullPath = Path.IsPathRooted(path) ? path : Path.Combine(RootPath, path);
+        //    return NormalizePathSeparators(fullPath);
+        //}
 
         /// <summary>
         /// Normalizes the directory separators in a file path to match the current platform's separator.
@@ -82,32 +81,24 @@ namespace VT.IO
         /// <summary>
         /// Checks if a file exists at the specified path.
         /// </summary>
-        public static bool FileExists(string path) => File.Exists(ResolvePath(path));
+        public static bool FileExists(string path) => File.Exists(NormalizePathSeparators(path));
 
         /// <summary>
         /// Checks if a directory exists at the specified path.
         /// </summary>
-        public static bool DirectoryExists(string path) => Directory.Exists(ResolvePath(path));
+        public static bool DirectoryExists(string path) => Directory.Exists(NormalizePathSeparators(path));
 
         /// <summary>
         /// Creates a directory at the specified path if it does not exist.
         /// </summary>
-        public static void CreateDirectory(string path)
+        public static string CreateDirectory(string path)
         {
-            string fullPath = ResolvePath(path);
-            if (!Directory.Exists(fullPath))
-                Directory.CreateDirectory(fullPath);
-        }
-
-        /// <summary>
-        /// Creates a directory at the specified path if it does not exist.
-        /// </summary>
-        public static void CreateAssetDirectory(string parentDir, string newFolderName)
-        {
-            var newFolderPath = Path.Combine(parentDir, newFolderName);
-            newFolderPath = NormalizePathSeparators(newFolderPath);
-            if (!AssetDatabase.IsValidFolder(newFolderPath))
-                AssetDatabase.CreateFolder(parentDir, newFolderName);
+            var normalizedPath = NormalizePathSeparators(path);
+            if (DirectoryExists(normalizedPath))
+            {
+                Directory.CreateDirectory(normalizedPath);
+            }
+            return normalizedPath;
         }
 
         /// <summary>
@@ -115,9 +106,17 @@ namespace VT.IO
         /// </summary>
         public static void DeleteFile(string path)
         {
-            string fullPath = ResolvePath(path);
-            if (File.Exists(fullPath))
-                File.Delete(fullPath);
+            var normalizedPath = NormalizePathSeparators(path);
+            if (FileExists(normalizedPath))
+            {
+                try
+                {
+                    File.Delete(normalizedPath);
+                }
+                catch (IOException)
+                {
+                }
+            }
         }
 
         /// <summary>
@@ -125,9 +124,11 @@ namespace VT.IO
         /// </summary>
         public static void DeleteDirectory(string path)
         {
-            string fullPath = ResolvePath(path);
-            if (Directory.Exists(fullPath))
-                Directory.Delete(fullPath, true);
+            var normalizedPath = NormalizePathSeparators(path);
+            if (DirectoryExists(normalizedPath))
+            {
+                Directory.Delete(normalizedPath, true);
+            }
         }
 
         /// <summary>
@@ -135,8 +136,8 @@ namespace VT.IO
         /// </summary>
         public static void SaveText(string path, string content)
         {
-            string fullPath = ResolvePath(path);
-            File.WriteAllText(fullPath, content);
+            var normalizedPath = NormalizePathSeparators(path);
+            File.WriteAllText(normalizedPath, content);
         }
 
         /// <summary>
@@ -144,8 +145,8 @@ namespace VT.IO
         /// </summary>
         public static string LoadText(string path)
         {
-            string fullPath = ResolvePath(path);
-            return File.Exists(fullPath) ? File.ReadAllText(fullPath) : null;
+            var normalizedPath = NormalizePathSeparators(path);
+            return File.Exists(normalizedPath) ? File.ReadAllText(normalizedPath) : null;
         }
 
         /// <summary>
@@ -153,8 +154,8 @@ namespace VT.IO
         /// </summary>
         public static void SaveBinary(string path, byte[] data)
         {
-            string fullPath = ResolvePath(path);
-            File.WriteAllBytes(fullPath, data);
+            var normalizedPath = NormalizePathSeparators(path);
+            File.WriteAllBytes(normalizedPath, data);
         }
 
         /// <summary>
@@ -162,8 +163,8 @@ namespace VT.IO
         /// </summary>
         public static byte[] LoadBinary(string path)
         {
-            string fullPath = ResolvePath(path);
-            return File.Exists(fullPath) ? File.ReadAllBytes(fullPath) : null;
+            var normalizedPath = NormalizePathSeparators(path);
+            return File.Exists(normalizedPath) ? File.ReadAllBytes(normalizedPath) : null;
         }
 
         /// <summary>
@@ -171,8 +172,9 @@ namespace VT.IO
         /// </summary>
         public static void SaveJson<T>(string path, T data)
         {
+            var normalizedPath = NormalizePathSeparators(path);
             string json = JsonUtility.ToJson(data, prettyPrint: true);
-            SaveText(path, json);
+            SaveText(normalizedPath, json);
         }
 
         /// <summary>
@@ -180,7 +182,8 @@ namespace VT.IO
         /// </summary>
         public static T LoadJson<T>(string path)
         {
-            string json = LoadText(path);
+            var normalizedPath = NormalizePathSeparators(path);
+            string json = LoadText(normalizedPath);
             return !string.IsNullOrEmpty(json) ? JsonUtility.FromJson<T>(json) : default;
         }
     }
