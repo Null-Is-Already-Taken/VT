@@ -1,6 +1,7 @@
 using UnityEngine;
 using DG.Tweening;
 using System.Collections.Generic;
+using VT.Extensions;
 
 namespace VT.ReuseableSystems.UI.Legacy
 {
