@@ -3,9 +3,11 @@
 using DG.DemiEditor;
 using Sirenix.OdinInspector;
 using Sirenix.OdinInspector.Editor;
+using Sirenix.Utilities;
 using Sirenix.Utilities.Editor;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using VT.IO;
@@ -21,38 +23,24 @@ namespace VT.Tools.ScriptCreator
         [InfoBox("Paste your C# code below, choose a script name and folder, or load from a text file, then click Save.")]
 
         [LabelText("Script Name")]
-        [Sirenix.OdinInspector.FilePath(AbsolutePath = false, ParentFolder = "Assets")]
-        [ValidateInput("@!string.IsNullOrWhiteSpace(scriptName)", "Name cannot be empty")]
+        [ReadOnly]
+        //[ValidateInput("@!string.IsNullOrWhiteSpace(scriptName)", "Name cannot be empty")]
         public string scriptName = "NewScript";
 
         [LabelText("Destination Folder")]
-        [FolderPath(AbsolutePath = false, ParentFolder = "Assets")]
-        [OnValueChanged(nameof(OnFolderPathChanged))]
+        [FolderPath(AbsolutePath = false)]
+        [ValidateInput("@!string.IsNullOrWhiteSpace(folderPath)", "Path cannot be empty")]
         public string folderPath = "Assets/Scripts";
 
         [LabelText("Script Content")]
         [TextArea(15, 50)]
+        [OnValueChanged(nameof(OnScriptContentChanged))]
         public string scriptContent;
-
-        private void OnFolderPathChanged()
-        {
-            if (!folderPath.StartsWith("Assets/"))
-            {
-                folderPath = "Assets/" + folderPath.TrimStart('/');
-            }
-        }
 
         private void LoadDefaultScript()
         {
-            //if (string.IsNullOrWhiteSpace(scriptFilePath))
-            {
-                scriptContent = string.Empty;
-                return;
-            }
-
             var sb = new StringBuilder();
-            sb.AppendLine("// AUTO-GENERATED FILE — Do not edit manually");
-            sb.AppendLine();
+
             sb.AppendLine($"using UnityEngine;");
             sb.AppendLine();
             sb.AppendLine($"public class {CLASS_NAME_MACRO} : MonoBehaviour");
@@ -61,13 +49,30 @@ namespace VT.Tools.ScriptCreator
             sb.AppendLine($"{Tab()}{{");
             sb.AppendLine();
             sb.AppendLine($"{Tab()}}}");
+            sb.AppendLine();
             sb.AppendLine($"{Tab()}private void Update()");
             sb.AppendLine($"{Tab()}{{");
             sb.AppendLine();
             sb.AppendLine($"{Tab()}}}");
             sb.AppendLine("}");
 
-            //scriptContent = IOManager.LoadText(scriptFilePath);
+            scriptContent = sb.ToString();
+        }
+
+        private void OnScriptContentChanged()
+        {
+            // Automatically extract class name from script content
+            if (!string.IsNullOrWhiteSpace(scriptContent))
+            {
+                scriptName = ExtractClassName(scriptContent);
+            }
+
+            if (scriptName == CLASS_NAME_MACRO)
+            {
+                scriptName = "NewScript"; // Default name if macro is used
+            }
+
+            scriptContent = ApplyClassName(scriptContent, scriptName);
         }
 
         [Button(ButtonSizes.Large)]
@@ -80,13 +85,12 @@ namespace VT.Tools.ScriptCreator
                 return;
             }
 
-            if (!Directory.Exists(folderPath))
-                Directory.CreateDirectory(folderPath);
+            if (!IOManager.DirectoryExists(folderPath))
+                IOManager.CreateDirectory(folderPath);
 
             var filePath = Path.Combine(folderPath, scriptName + ".cs");
-            filePath = AssetDatabase.GenerateUniqueAssetPath(filePath);
 
-            if (File.Exists(filePath))
+            if (IOManager.FileExists(filePath))
             {
                 if (!EditorUtility.DisplayDialog(
                     "Overwrite Script?",
@@ -97,7 +101,7 @@ namespace VT.Tools.ScriptCreator
                 }
             }
 
-            if (scriptContent.IsNullOrEmpty())
+            if (string.IsNullOrWhiteSpace(scriptContent))
             {
                 LoadDefaultScript();
                 scriptContent = ApplyClassName(scriptContent, scriptName);
@@ -107,7 +111,7 @@ namespace VT.Tools.ScriptCreator
 
             if (!scriptContent.IsNullOrEmpty())
             {
-                File.WriteAllText(filePath, scriptContent);
+                IOManager.SaveText(filePath, scriptContent);
                 InternalLogger.Instance.LogDebug($"<b>Script saved:</b> {filePath}");
                 AssetDatabase.Refresh();
             }
@@ -115,6 +119,21 @@ namespace VT.Tools.ScriptCreator
             {
                 InternalLogger.Instance.LogError($"<b>Fail to save script...</b>");
             }
+        }
+
+        [Button(ButtonSizes.Large)]
+        private void TestIO()
+        {
+            //InternalLogger.Instance.LogDebug(this.folderPath);
+            //InternalLogger.Instance.LogDebug(IOManager.ResolvePath(this.folderPath));
+            //InternalLogger.Instance.LogDebug(IOManager.ResolvePath("#persistent/" + this.folderPath));
+            //InternalLogger.Instance.LogDebug(IOManager.ResolvePath("#data/" + this.folderPath));
+            //InternalLogger.Instance.LogDebug(IOManager.ResolvePath("#streaming/" + this.folderPath));
+            //InternalLogger.Instance.LogDebug(IOManager.ResolvePath("#temp/" + this.folderPath));
+            //InternalLogger.Instance.LogDebug(IOManager.ResolvePath("#project/" + this.folderPath));
+
+            //var folderPath = "#persistent/" + this.folderPath;
+            //InternalLogger.Instance.LogDebug($"Directory {folderPath} exists:" + IOManager.DirectoryExists(folderPath));
         }
 
         [MenuItem("Tools/Script Creator")]
@@ -141,6 +160,20 @@ namespace VT.Tools.ScriptCreator
             if (string.IsNullOrEmpty(template) || string.IsNullOrEmpty(macroToken))
                 return template;
             return template.Replace(macroToken, replacement);
+        }
+
+        public static string ExtractClassName(string script)
+        {
+            if (string.IsNullOrWhiteSpace(script))
+                return "NewScript";
+
+            // Match "class ClassName" optionally preceded by modifiers like public, private, etc.
+            var match = Regex.Match(script, @"\bclass\s+([A-Za-z_][A-Za-z0-9_]*)");
+
+            if (match.Success && match.Groups.Count > 1)
+                return match.Groups[1].Value;
+
+            return "NewScript";
         }
 
         public static string ApplyClassName(string template, string className)
