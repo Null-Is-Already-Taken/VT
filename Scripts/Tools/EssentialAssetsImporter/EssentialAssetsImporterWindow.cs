@@ -1,74 +1,151 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 
-using Sirenix.OdinInspector;
-using Sirenix.OdinInspector.Editor;
 using UnityEditor;
 using UnityEngine;
 using VT.IO;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
-    public class EssentialAssetsImporterWindow : OdinEditorWindow
+    public class EssentialAssetsImporterWindow : EditorWindow
     {
-        [ReadOnly]
-        [ShowInInspector]
-        private string parentPath = GetAssetStoreBasePath();
-
-        [ShowInInspector]
-        [InlineEditor]
+        private string parentPath;
         private AssetsConfig assetsConfig;
-
-        [Sirenix.OdinInspector.FilePath(Extensions = "unitypackage", RequireExistingPath = true, ParentFolder = "$parentPath")]
-        [LabelText("Select UnityPackage")]
-        [ShowInInspector]
         private string selectedRelativePath;
+
+        private int currentPage = 0;
+        private const int itemsPerPage = 2;
+
 
         [MenuItem("Tools/Essential Assets Importer")]
         public static void OpenWindow()
         {
-            GetWindow<EssentialAssetsImporterWindow>().Show();
+            var window = GetWindow<EssentialAssetsImporterWindow>("Essential Assets Importer");
+            window.Show();
         }
 
-        protected override void OnEnable()
+        private void OnEnable()
         {
             parentPath = GetAssetStoreBasePath();
+            assetsConfig = null;
         }
 
-        [Button("Load Config")]
-        [HideIf("$assetsConfig")]
-        private void LoadConfig()
+        private void OnGUI()
         {
-            string selectedPath = EditorUtility.OpenFilePanel("Select AssetsConfig", "Assets", "asset");
-            if (string.IsNullOrEmpty(selectedPath))
-                return;
+            EditorGUILayout.LabelField("Asset Store Cache Path:", EditorStyles.boldLabel);
+            EditorGUI.BeginDisabledGroup(true);
+            EditorGUILayout.TextField(parentPath);
+            EditorGUI.EndDisabledGroup();
 
-            // Get base folder of this script
-            string scriptPath = AssetDatabase.GetAssetPath(MonoScript.FromScriptableObject(this));
-            string baseFolder = IOManager.GetDirectoryName(scriptPath);
-            string configFolder = IOManager.CombinePaths(baseFolder, "Config Data");
+            GUILayout.Space(10);
 
-            // Convert to project-relative path
-            if (selectedPath.StartsWith(Application.dataPath))
+            if (assetsConfig == null)
             {
-                string unityRelativePath = "Assets" + selectedPath.Substring(Application.dataPath.Length);
-
-                // Ensure inside Config Data
-                if (!unityRelativePath.Replace("\\", "/").StartsWith(configFolder.Replace("\\", "/")))
+                if (GUILayout.Button("Load Config"))
                 {
-                    Debug.LogError("Selected file must be inside the 'Config Data' folder next to this script.");
-                    return;
+                    LoadConfig();
                 }
-
-                assetsConfig = AssetDatabase.LoadAssetAtPath<AssetsConfig>(unityRelativePath);
-                Debug.Log("Loaded config: " + unityRelativePath);
             }
             else
             {
-                Debug.LogError("Selected path is not inside the project.");
+                EditorGUILayout.LabelField("Config Loaded:", EditorStyles.boldLabel);
+                EditorGUI.BeginDisabledGroup(true);
+                EditorGUILayout.ObjectField(assetsConfig, typeof(AssetsConfig), false);
+                EditorGUI.EndDisabledGroup();
+
+                // Draw paginated list
+                if (assetsConfig.assetsPaths != null && assetsConfig.assetsPaths.Count > 0)
+                {
+                    GUILayout.Space(10);
+                    EditorGUILayout.LabelField("Configured UnityPackages:", EditorStyles.boldLabel);
+
+                    int totalItems = assetsConfig.assetsPaths.Count;
+                    int totalPages = Mathf.CeilToInt(totalItems / (float)itemsPerPage);
+                    currentPage = Mathf.Clamp(currentPage, 0, Mathf.Max(totalPages - 1, 0));
+
+                    int startIndex = currentPage * itemsPerPage;
+                    int endIndex = Mathf.Min(startIndex + itemsPerPage, totalItems);
+
+                    EditorGUI.indentLevel++;
+                    for (int i = startIndex; i < endIndex; i++)
+                    {
+                        EditorGUILayout.LabelField($"• {assetsConfig.assetsPaths[i].relativePath}");
+                    }
+                    EditorGUI.indentLevel--;
+
+                    GUILayout.Space(5);
+
+                    // Page controls
+                    EditorGUILayout.BeginHorizontal();
+                    GUI.enabled = currentPage > 0;
+                    if (GUILayout.Button("← Prev", GUILayout.Width(70)))
+                        currentPage--;
+                    GUI.enabled = currentPage < totalPages - 1;
+                    if (GUILayout.Button("Next →", GUILayout.Width(70)))
+                        currentPage++;
+                    GUI.enabled = true;
+
+                    GUILayout.FlexibleSpace();
+                    EditorGUILayout.LabelField($"Page {currentPage + 1} of {totalPages}", GUILayout.Width(120));
+                    EditorGUILayout.EndHorizontal();
+                }
+
+                GUILayout.Space(10);
+
+                EditorGUILayout.LabelField("Select UnityPackage (relative to above path):", EditorStyles.boldLabel);
+                selectedRelativePath = EditorGUILayout.TextField(selectedRelativePath);
+
+                if (GUILayout.Button("Add Selected Package To Config"))
+                {
+                    AddSelected();
+                }
+
+                GUILayout.Space(10);
+
+                if (GUILayout.Button("Import Assets"))
+                {
+                    ImportAllPackages();
+                }
             }
         }
 
-        [Button("Add Selected Package To Config")]
+        private void LoadConfig()
+        {
+            string[] guids = AssetDatabase.FindAssets("t:AssetsConfig");
+
+            if (guids.Length == 1)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guids[0]);
+                assetsConfig = AssetDatabase.LoadAssetAtPath<AssetsConfig>(path);
+                Debug.Log("Loaded config: " + path);
+            }
+            else if (guids.Length > 1)
+            {
+                Debug.LogWarning("Multiple AssetsConfig files found. Please resolve manually.");
+                string folder = IOManager.GetDirectoryName(AssetDatabase.GUIDToAssetPath(guids[0]));
+                EditorUtility.RevealInFinder(folder);
+            }
+            else
+            {
+                // None found, offer to create one
+                string configFolder = ToolPathResolver.GetToolRelativePath("Config Data", "toolmarker-essential-assets-importer.txt");
+                string fullFolder = IOManager.GetAbsolutePath(Application.dataPath, configFolder.Replace("Assets/", ""));
+
+                if (!IOManager.DirectoryExists(fullFolder))
+                {
+                    IOManager.CreateDirectory(fullFolder);
+                    AssetDatabase.Refresh();
+                }
+
+                string assetPath = IOManager.CombinePaths(configFolder, "DefaultAssetsConfig.asset");
+
+                assetsConfig = CreateInstance<AssetsConfig>();
+                AssetDatabase.CreateAsset(assetsConfig, assetPath);
+                AssetDatabase.SaveAssets();
+                Debug.Log("Created new AssetsConfig at: " + assetPath);
+            }
+        }
+
+
         private void AddSelected()
         {
             if (assetsConfig == null)
@@ -77,8 +154,7 @@ namespace VT.Tools.EssentialAssetsImporter
                 return;
             }
 
-            var fullPath = IOManager.CombinePaths(parentPath, selectedRelativePath);
-            
+            string fullPath = IOManager.CombinePaths(parentPath, selectedRelativePath);
             if (string.IsNullOrEmpty(fullPath) || !IOManager.FileExists(fullPath))
             {
                 Debug.LogWarning($"Selected path [{fullPath}] is invalid.");
@@ -96,11 +172,9 @@ namespace VT.Tools.EssentialAssetsImporter
             AssetDatabase.SaveAssets();
 
             Debug.Log("Added: " + selectedRelativePath);
-            selectedRelativePath = string.Empty; // Clear selection after adding
+            selectedRelativePath = string.Empty;
         }
 
-        [Button("Import Assets")]
-        [EnableIf("$assetsConfig")]
         private void ImportAllPackages()
         {
             if (assetsConfig.assetsPaths == null || assetsConfig.assetsPaths.Count == 0)
@@ -120,7 +194,7 @@ namespace VT.Tools.EssentialAssetsImporter
                 }
 
                 Debug.Log($"Importing package: {entry.relativePath}");
-                AssetDatabase.ImportPackage(fullPath, false); // false = no import dialog
+                AssetDatabase.ImportPackage(fullPath, false);
             }
         }
 

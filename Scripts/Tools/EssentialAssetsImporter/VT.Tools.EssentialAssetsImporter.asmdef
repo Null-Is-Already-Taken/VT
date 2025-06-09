@@ -2,7 +2,8 @@
     "name": "VT.Tools.EssentialAssetsImporter",
     "rootNamespace": "VT.Tools.EssentialAssetsImporter",
     "references": [
-        "GUID:2e7bb7489641548f1b3f16d42319f968"
+        "GUID:2e7bb7489641548f1b3f16d42319f968",
+        "GUID:65dca0e46b28c20459add7f29a409436"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

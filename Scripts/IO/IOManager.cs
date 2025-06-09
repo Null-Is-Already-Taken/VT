@@ -77,6 +77,15 @@ namespace VT.IO
             return Regex.Replace(unified, $"{Regex.Escape(sep.ToString())}+", sep.ToString());
         }
 
+        public static string GetFileNameWithoutExtension(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+
+            // Normalize the path and get the file name without extension
+            string fileName = Path.GetFileNameWithoutExtension(path);
+            return NormalizePathSeparators(fileName);
+        }
+
         public static string GetDirectoryName(string path)
         {
             if (string.IsNullOrEmpty(path)) return null;
