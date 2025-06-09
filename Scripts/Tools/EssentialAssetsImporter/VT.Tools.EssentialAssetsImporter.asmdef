@@ -1,6 +1,6 @@
 {
-    "name": "VT.Tools",
-    "rootNamespace": "VT.Tools",
+    "name": "VT.Tools.EssentialAssetsImporter",
+    "rootNamespace": "VT.Tools.EssentialAssetsImporter",
     "references": [
         "GUID:2e7bb7489641548f1b3f16d42319f968"
     ],

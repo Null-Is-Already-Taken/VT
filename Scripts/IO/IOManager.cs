@@ -66,7 +66,7 @@ namespace VT.IO
         /// </returns>
         public static string NormalizePathSeparators(string path)
         {
-            if (string.IsNullOrEmpty(path)) return path;
+            if (string.IsNullOrEmpty(path)) return null;
 
             char sep = Path.DirectorySeparatorChar;
 
@@ -77,6 +77,20 @@ namespace VT.IO
             return Regex.Replace(unified, $"{Regex.Escape(sep.ToString())}+", sep.ToString());
         }
 
+        public static string GetDirectoryName(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+
+            return NormalizePathSeparators(Path.GetDirectoryName(path) ?? string.Empty);
+        }
+
+        public static string CombinePaths(params string[] paths)
+        {
+            if (paths == null || paths.Length == 0) return string.Empty;
+
+            // Normalize each path and combine them
+            return NormalizePathSeparators(Path.Combine(paths));
+        }
 
         /// <summary>
         /// Checks if a file exists at the specified path.
@@ -110,6 +124,40 @@ namespace VT.IO
             newFolderPath = NormalizePathSeparators(newFolderPath);
             if (!AssetDatabase.IsValidFolder(newFolderPath))
                 AssetDatabase.CreateFolder(parentDir, newFolderName);
+        }
+
+        /// <summary>
+        /// Converts a full path into a relative path based on the given root.
+        /// Normalizes both paths before comparison.
+        /// </summary>
+        public static string GetRelativePath(string rootPath, string fullPath)
+        {
+            if (string.IsNullOrEmpty(rootPath) || string.IsNullOrEmpty(fullPath))
+                return null;
+
+            rootPath = NormalizePathSeparators(Path.GetFullPath(rootPath));
+            fullPath = NormalizePathSeparators(Path.GetFullPath(fullPath));
+
+            if (!fullPath.StartsWith(rootPath))
+            {
+                Debug.LogWarning($"GetRelativePath: '{fullPath}' is not under root '{rootPath}'");
+                return fullPath; // fallback to full path
+            }
+
+            string relative = fullPath.Substring(rootPath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return relative;
+        }
+
+        /// <summary>
+        /// Combines a root path with a relative subpath to form an absolute path.
+        /// </summary>
+        public static string GetAbsolutePath(string rootPath, string relativePath)
+        {
+            if (string.IsNullOrEmpty(rootPath)) return null;
+            if (string.IsNullOrEmpty(relativePath)) return NormalizePathSeparators(rootPath);
+
+            string combined = Path.Combine(rootPath, relativePath);
+            return NormalizePathSeparators(Path.GetFullPath(combined));
         }
 
         /// <summary>
