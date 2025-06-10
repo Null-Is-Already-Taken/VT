@@ -12,11 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2da477a39c17f0c479d018013fed3c94, type: 3}
   m_Name: Default Assets Config
   m_EditorClassIdentifier: 
-  parentPath: C:\Users\tuxed\AppData\Roaming\Unity\Asset Store-5.x
   assetsPaths:
-  - relativePath: Demigiant/Editor ExtensionsVisual Scripting/DOTween Pro.unitypackage
-  - relativePath: FlyingWorm/Editor ExtensionsSystem/Editor Console Pro.unitypackage
-  - relativePath: Sirenix/Editor ExtensionsSystem/Odin Inspector and Serializer.unitypackage
-  - relativePath: Sirenix/Editor ExtensionsUtilities/Odin Validator.unitypackage
-  - relativePath: Tiny Giant Studio/Editor ExtensionsUtilities/Better Transform -
+  - relativePath: FlyingWorm\Editor ExtensionsSystem\Editor Console Pro.unitypackage
+  - relativePath: Sirenix\Editor ExtensionsSystem\Odin Inspector and Serializer.unitypackage
+  - relativePath: Sirenix\Editor ExtensionsUtilities\Odin Validator.unitypackage
+  - relativePath: Tiny Giant Studio\Editor ExtensionsUtilities\Better Transform -
       Size Notes Global-Local workspace child parent transform.unitypackage
+  - relativePath: The Naughty Cult\Editor ExtensionsUtilities\Hot Reload Edit Code
+      Without Compiling.unitypackage
+  - relativePath: Demigiant\Editor ExtensionsVisual Scripting\DOTween Pro.unitypackage
+  - relativePath: QFSW\Editor ExtensionsUtilities\Quantum Console.unitypackage

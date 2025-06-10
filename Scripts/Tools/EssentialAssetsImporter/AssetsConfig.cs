@@ -1,8 +1,9 @@
 using Sirenix.OdinInspector;
-using UnityEngine;
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 using VT.IO;
+using static DG.DemiEditor.DeEditorUtils;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
@@ -24,25 +25,22 @@ namespace VT.Tools.EssentialAssetsImporter
             /// <summary>
             /// Returns the author and package name from the relative path (e.g., "Sirenix/Odin Inspector").
             /// </summary>
-            public string AuthorAndPackage
+            public override string ToString()
             {
-                get
-                {
-                    if (string.IsNullOrEmpty(relativePath))
-                        return string.Empty;
+                if (string.IsNullOrEmpty(relativePath))
+                    return string.Empty;
 
-                    var parts = relativePath.Split('/');
-                    if (parts.Length < 2)
-                        return relativePath;
+                var parts = relativePath.Split('\\');
+                if (parts.Length < 2)
+                    string.Join(" - ", parts);
 
-                    string author = parts[0];
+                string author = parts[0];
 
-                    // Get last part without ".unitypackage"
-                    string packageFile = parts[^1];
-                    string packageName = IOManager.GetFileNameWithoutExtension(packageFile);
+                // Get last part without ".unitypackage"
+                string packageFile = parts[^1];
+                string packageName = IOManager.GetFileNameWithoutExtension(packageFile);
 
-                    return $"{author}/{packageName}";
-                }
+                return $"{author} - {packageName}";
             }
         }
 
