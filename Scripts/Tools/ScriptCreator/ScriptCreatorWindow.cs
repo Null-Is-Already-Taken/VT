@@ -11,7 +11,7 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using VT.IO;
-using VT.Utils.Logger;
+using VT.Logger;
 
 namespace VT.Tools.ScriptCreator
 {

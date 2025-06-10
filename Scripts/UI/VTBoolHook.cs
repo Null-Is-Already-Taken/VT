@@ -1,4 +1,4 @@
-using VT.Utils.Logger;
+using VT.Logger;
 
 namespace VT.UI
 {

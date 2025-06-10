@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace VT.Utils
+namespace VT.EditorUtils
 {
     public static class IconLoader
     {

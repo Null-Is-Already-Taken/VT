@@ -2,8 +2,9 @@
 
 using System;
 using UnityEngine;
+using VT.Utils;
 
-namespace VT.Utils.Logger
+namespace VT.Logger
 {
     /// <summary>
     /// A thread-safe, lazy-initialized Singleton logger implementing ILogger.

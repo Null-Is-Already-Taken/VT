@@ -3,8 +3,8 @@
     "rootNamespace": "VT.UI",
     "references": [
         "GUID:6055be8ebefd69e48b49212b09b47b2f",
-        "GUID:0eee06183e3963f448a88847dbe6e357",
-        "GUID:4d503d00534bc422daca68ea919fbf60"
+        "GUID:4d503d00534bc422daca68ea919fbf60",
+        "GUID:dc6d8b55341fe7949a021b0e58b83f1e"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

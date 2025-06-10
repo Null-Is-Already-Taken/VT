@@ -6,7 +6,7 @@ using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
 using VT.IO;
-using VT.Utils;
+using VT.EditorUtils;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
@@ -21,6 +21,7 @@ namespace VT.Tools.EssentialAssetsImporter
         private const float spacing = 10;
         private const string removeButtonText = EmbeddedIcons.Wastebasket_Unicode;
         private const string addButtonText = EmbeddedIcons.PlusSign_Unicode;
+        private const string openButtonText = EmbeddedIcons.FileFolder_Unicode;
         private const float buttonSize = 24;
 
         private ReorderableList reorderableList;
@@ -40,6 +41,7 @@ namespace VT.Tools.EssentialAssetsImporter
         {
             parentPath = GetAssetStoreBasePath();
             if (assetsConfig == null) LoadConfig();
+            assetsConfig = null;
         }
 
         private void OnGUI()
@@ -47,13 +49,10 @@ namespace VT.Tools.EssentialAssetsImporter
             DrawCachePath();
             GUILayout.Space(spacing);
 
-            if (assetsConfig == null)
-            {
-                if (GUILayout.Button("Load Config")) LoadConfig();
-            }
-            else
-            {
-                DrawConfigObject();
+            DrawConfigObject();
+            
+            if (assetsConfig != null)
+            { 
                 DrawPackageList();
                 //DrawReorderablePackageList();
                 DrawImportAssetButton();
@@ -63,7 +62,7 @@ namespace VT.Tools.EssentialAssetsImporter
         private void DrawCachePath()
         {
             EditorGUILayout.BeginHorizontal("helpBox");
-            EditorGUILayout.LabelField("Asset Store Cache Path:", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Asset Store Cache Path", EditorStyles.boldLabel);
             EditorGUILayout.EndHorizontal();
             EditorGUI.BeginDisabledGroup(true);
             EditorGUILayout.TextField(parentPath);
@@ -73,7 +72,18 @@ namespace VT.Tools.EssentialAssetsImporter
         private void DrawConfigObject()
         {
             EditorGUILayout.BeginHorizontal("helpBox");
-            EditorGUILayout.LabelField("Config Loaded:", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Config Loaded", EditorStyles.boldLabel);
+            GUILayout.FlexibleSpace();
+
+            GUIContent openFolder = new(openButtonText, "Load Config");
+            var openButtonStyle = new GUIStyle(GUI.skin.button)
+            {
+                fontSize = 12,
+                fixedWidth = buttonSize,
+                fixedHeight = buttonSize,
+                alignment = TextAnchor.MiddleCenter
+            };
+            StyledButton(openFolder, new Color(1f, 1f, 1f), LoadConfig, openButtonStyle);
             EditorGUILayout.EndHorizontal();
             EditorGUI.BeginDisabledGroup(true);
             EditorGUILayout.ObjectField(assetsConfig, typeof(AssetsConfig), false);
@@ -139,20 +149,20 @@ namespace VT.Tools.EssentialAssetsImporter
 
             GUILayout.Space(spacing);
             EditorGUILayout.BeginHorizontal("helpBox");
-            EditorGUILayout.LabelField("Configured Package List:", EditorStyles.boldLabel);
+
+            EditorGUILayout.LabelField("Configured Package List", EditorStyles.boldLabel);
             GUILayout.FlexibleSpace();
-            
+
             GUIContent addButton = new(addButtonText, "Add Package");
             var addButtonStyle = new GUIStyle(GUI.skin.button)
             {
                 fontSize = 12,
-                fixedWidth = 18,
-                fixedHeight = 18,
+                fixedWidth = buttonSize,
+                fixedHeight = buttonSize,
                 alignment = TextAnchor.MiddleCenter
             };
-            StyledButton(addButton, new(.5f, .8f, 1f), AddPackage, addButtonStyle);
+            StyledButton(addButton, new Color(1f, 1f, 1f), AddPackage, addButtonStyle);
 
-            GUILayout.Space(spacing);
             EditorGUILayout.EndHorizontal();
 
             if (assetsConfig.assetsPaths.Count == 0) return;

@@ -1,4 +1,4 @@
-namespace VT.Utils.Logger
+namespace VT.Logger
 {
     [System.Flags]
     public enum LogLevel

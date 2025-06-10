@@ -2,8 +2,10 @@ using UnityEngine;
 using System;
 using VT.Patterns.SingletonPattern;
 using Sirenix.OdinInspector;
+using VT.Utils;
 
-namespace VT.Utils.Logger
+
+namespace VT.Logger
 {
     public class UnityLogger : Singleton<UnityLogger>, ILogger
     {

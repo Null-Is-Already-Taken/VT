@@ -2,7 +2,7 @@
     "name": "VT.Tools.IconViewer",
     "rootNamespace": "",
     "references": [
-        "GUID:4d503d00534bc422daca68ea919fbf60"
+        "GUID:fd2d458ef27b2db47a77a2f23bfb4432"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

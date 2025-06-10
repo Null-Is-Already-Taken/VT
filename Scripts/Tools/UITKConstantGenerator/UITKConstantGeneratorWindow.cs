@@ -7,7 +7,7 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 using VT.IO;
-using VT.Utils.Logger;
+using VT.Logger;
 
 namespace VT.Tools.UITKConstantGenerator
 {
