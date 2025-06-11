@@ -9,7 +9,7 @@
 		"email": "vitiet.programmer@gmail.com"
 	},
 	"dependencies": {
-		"com.cysharp.unitask": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask",
+		"com.cysharp.unitask": "2.5.10",
 		"com.unity.nuget.newtonsoft-json": "3.2.1"
 	}
 }
