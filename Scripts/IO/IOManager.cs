@@ -107,9 +107,27 @@ namespace VT.IO
         public static bool FileExists(string path) => File.Exists(NormalizePathSeparators(path));
 
         /// <summary>
+        /// Creates a directory at the specified path if it does not exist.
+        /// </summary>
+        public static bool AssetFileExists(string path)
+        {
+            return !AssetDatabase.IsValidFolder(NormalizePathSeparators(path))
+                && AssetDatabase.AssetPathExists(NormalizePathSeparators(path));
+        }
+
+        /// <summary>
         /// Checks if a directory exists at the specified path.
         /// </summary>
         public static bool DirectoryExists(string path) => Directory.Exists(NormalizePathSeparators(path));
+
+        /// <summary>
+        /// Creates a directory at the specified path if it does not exist.
+        /// </summary>
+        public static bool AssetDirectoryExists(string path)
+        {
+            return AssetDatabase.IsValidFolder(NormalizePathSeparators(path))
+                && AssetDatabase.AssetPathExists(NormalizePathSeparators(path));
+        }
 
         /// <summary>
         /// Creates a directory at the specified path if it does not exist.
@@ -124,15 +142,58 @@ namespace VT.IO
             return normalizedPath;
         }
 
+        ///// <summary>
+        ///// Creates a directory at the specified path if it does not exist.
+        ///// </summary>
+        //public static void CreateAssetDirectory(string parentDir, string newFolderName)
+        //{
+        //    var newFolderPath = Path.Combine(parentDir, newFolderName);
+        //    newFolderPath = NormalizePathSeparators(newFolderPath);
+        //    if (!AssetDatabase.IsValidFolder(newFolderPath))
+        //        AssetDatabase.CreateFolder(parentDir, newFolderName);
+        //}
+
         /// <summary>
         /// Creates a directory at the specified path if it does not exist.
         /// </summary>
-        public static void CreateAssetDirectory(string parentDir, string newFolderName)
+        public static string CreateAssetDirectory(string parentDir, string newFolderName)
         {
             var newFolderPath = Path.Combine(parentDir, newFolderName);
             newFolderPath = NormalizePathSeparators(newFolderPath);
             if (!AssetDatabase.IsValidFolder(newFolderPath))
-                AssetDatabase.CreateFolder(parentDir, newFolderName);
+                return AssetDatabase.CreateFolder(parentDir, newFolderName);
+            return newFolderPath;
+        }
+
+        /// <summary>
+        /// Creates the full directory path in the Unity project (relative to 'Assets/').
+        /// Recursively creates all intermediate folders if they don't exist.
+        /// Returns the final folder path created or confirmed.
+        /// </summary>
+        public static string CreateAssetDirectoryRecursive(string unityPath)
+        {
+            unityPath = NormalizePathSeparators(unityPath);
+
+            if (string.IsNullOrEmpty(unityPath))
+                throw new ArgumentException("Path cannot be null or empty.", nameof(unityPath));
+
+            string[] parts = unityPath.Split('\\');
+            if (parts.Length == 0 || parts[0] != "Assets")
+                throw new ArgumentException($"Path ({unityPath}) must start with 'Assets/'", nameof(unityPath));
+
+            string currentPath = parts[0]; // "Assets"
+
+            for (int i = 1; i < parts.Length; i++)
+            {
+                string nextPath = CombinePaths(currentPath, parts[i]);
+                if (!AssetDatabase.IsValidFolder(nextPath))
+                {
+                    AssetDatabase.CreateFolder(currentPath, parts[i]);
+                }
+                currentPath = nextPath;
+            }
+
+            return currentPath;
         }
 
         /// <summary>
@@ -158,6 +219,28 @@ namespace VT.IO
         }
 
         /// <summary>
+        /// Converts an absolute path to a Unity-relative path starting with \"Assets/\".
+        /// Returns null if the path is outside the Unity project folder.
+        /// </summary>
+        public static string GetUnityRelativePath(string absolutePath)
+        {
+            if (string.IsNullOrEmpty(absolutePath)) return null;
+
+            string projectPath = Path.GetFullPath(Application.dataPath).Replace("\\", "/");
+            projectPath = projectPath.Substring(0, projectPath.Length - "Assets".Length); // Project root
+
+            string normalizedFullPath = Path.GetFullPath(absolutePath).Replace("\\", "/");
+
+            if (!normalizedFullPath.StartsWith(projectPath))
+            {
+                Debug.LogWarning($"Path '{normalizedFullPath}' is outside the Unity project.");
+                return null;
+            }
+
+            return normalizedFullPath.Substring(projectPath.Length);
+        }
+
+        /// <summary>
         /// Combines a root path with a relative subpath to form an absolute path.
         /// </summary>
         public static string GetAbsolutePath(string rootPath, string relativePath)
@@ -168,6 +251,8 @@ namespace VT.IO
             string combined = Path.Combine(rootPath, relativePath);
             return NormalizePathSeparators(Path.GetFullPath(combined));
         }
+
+        public static string ReadAllText(string path) => File.ReadAllText(path);
 
         /// <summary>
         /// Deletes a file at the specified path if it exists.

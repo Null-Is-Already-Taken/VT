@@ -2,11 +2,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
-using UnityEditorInternal;
 using UnityEngine;
-using VT.IO;
 using VT.EditorUtils;
+using VT.IO;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
@@ -20,15 +20,18 @@ namespace VT.Tools.EssentialAssetsImporter
         private const float averageCharWidth = 6f;
         private const float spacing = 10;
         private const string removeButtonText = EmbeddedIcons.Wastebasket_Unicode;
-        private const string addButtonText = EmbeddedIcons.PlusSign_Unicode;
+        private const string addLocalButtonText = EmbeddedIcons.Package_Unicode;
+        private const string addGlobalButtonText = EmbeddedIcons.Internet_Unicode;
         private const string openButtonText = EmbeddedIcons.FileFolder_Unicode;
+        private const string locateButtonText = EmbeddedIcons.LeftPointingMagnifyingGlass_Unicode;
         private const float buttonSize = 24;
-
-        private ReorderableList reorderableList;
+        private const string configFolderPath = "Assets/EssentialAssetsImporter/Config Data";
         
         private Dictionary<string, bool> fileExistenceCache = new();
         private double lastCacheRefreshTime;
         private const double cacheRefreshInterval = 10.0; // in seconds
+        private int? pendingRemoveIndex = null;
+
 
         [MenuItem("Tools/Essential Assets Importer")]
         public static void OpenWindow()
@@ -39,22 +42,19 @@ namespace VT.Tools.EssentialAssetsImporter
 
         private void OnEnable()
         {
-            parentPath = GetAssetStoreBasePath();
-            if (assetsConfig == null) LoadConfig();
-            assetsConfig = null;
+            parentPath = HelperFunctions.GetAssetStoreBasePath();
         }
 
         private void OnGUI()
         {
-            DrawCachePath();
-            GUILayout.Space(spacing);
+            //DrawCachePath();
+            //GUILayout.Space(spacing);
 
             DrawConfigObject();
             
             if (assetsConfig != null)
             { 
                 DrawPackageList();
-                //DrawReorderablePackageList();
                 DrawImportAssetButton();
             }
         }
@@ -76,164 +76,124 @@ namespace VT.Tools.EssentialAssetsImporter
             GUILayout.FlexibleSpace();
 
             GUIContent openFolder = new(openButtonText, "Load Config");
-            var openButtonStyle = new GUIStyle(GUI.skin.button)
-            {
-                fontSize = 12,
-                fixedWidth = buttonSize,
-                fixedHeight = buttonSize,
-                alignment = TextAnchor.MiddleCenter
-            };
-            StyledButton(openFolder, new Color(1f, 1f, 1f), LoadConfig, openButtonStyle);
+            HelperFunctions.StyledButton(openFolder, new Color(1f, 1f, 1f), LoadConfig, HelperFunctions.InlineButtonStyle);
             EditorGUILayout.EndHorizontal();
             EditorGUI.BeginDisabledGroup(true);
             EditorGUILayout.ObjectField(assetsConfig, typeof(AssetsConfig), false);
             EditorGUI.EndDisabledGroup();
         }
 
-        private void InitializePackageList()
-        {
-            reorderableList = new(assetsConfig.assetsPaths, typeof(AssetsConfig.AssetEntry), true, true, false, false);
-            reorderableList.drawHeaderCallback = rect =>
-            {
-                // Split the header rect: left for label, right for + button
-                Rect labelRect = new(rect.x, rect.y, rect.width - buttonSize - spacing, EditorGUIUtility.singleLineHeight);
-                Rect buttonRect = new(rect.x + rect.width - buttonSize - spacing, rect.y, buttonSize, EditorGUIUtility.singleLineHeight);
-
-                EditorGUI.LabelField(labelRect, "Configured Package List");
-                GUILayout.FlexibleSpace();
-                GUIContent addIcon = new(addButtonText, "Add Package");
-                if (GUI.Button(buttonRect, addIcon))
-                {
-                    AddPackage();
-                }
-                GUILayout.Space(spacing);
-            };
-            reorderableList.drawElementCallback = (rect, index, isActive, isFocused) =>
-            {
-                var entry = assetsConfig.assetsPaths[index];
-                string fullText = entry.ToString();
-                string truncated = TruncateWithEllipsis(fullText, EstimateMaxChars(rect.width - buttonSize - spacing));
-
-                Rect labelRect = new(rect.x, rect.y + 2, rect.width - buttonSize - spacing * 2, EditorGUIUtility.singleLineHeight);
-                GUIContent label = new(truncated, fullText);
-                EditorGUI.LabelField(labelRect, label);
-
-                Rect buttonRect = new(rect.xMax - buttonSize - spacing, rect.y + 1, buttonSize, buttonSize);
-                GUIContent removeIcon = new(removeButtonText, "Remove Package");
-                if (GUI.Button(buttonRect, removeIcon))
-                {
-                    assetsConfig.assetsPaths.RemoveAt(index);
-                    EditorUtility.SetDirty(assetsConfig);
-                    AssetDatabase.SaveAssets();
-                    reorderableList.list = assetsConfig.assetsPaths; // Refresh
-                }
-            };
-        }
-
-        private void DrawReorderablePackageList()
-        {
-            if (assetsConfig == null || reorderableList == null)
-                return;
-
-            GUILayout.Space(spacing);
-            reorderableList.DoLayoutList();
-        }
-
         private void DrawPackageList()
         {
-            if (assetsConfig.assetsPaths == null) return;
+            if (assetsConfig.assetsEntries == null) return;
 
             double currentTime = EditorApplication.timeSinceStartup;
 
-            bool ShouldRefreshCache() => currentTime - lastCacheRefreshTime > cacheRefreshInterval;
-
             GUILayout.Space(spacing);
-            EditorGUILayout.BeginHorizontal("helpBox");
+            
+            DrawHeaderBar();
 
-            EditorGUILayout.LabelField("Configured Package List", EditorStyles.boldLabel);
-            GUILayout.FlexibleSpace();
+            if (assetsConfig.assetsEntries.Count == 0) return;
 
-            GUIContent addButton = new(addButtonText, "Add Package");
-            var addButtonStyle = new GUIStyle(GUI.skin.button)
-            {
-                fontSize = 12,
-                fixedWidth = buttonSize,
-                fixedHeight = buttonSize,
-                alignment = TextAnchor.MiddleCenter
-            };
-            StyledButton(addButton, new Color(1f, 1f, 1f), AddPackage, addButtonStyle);
-
-            EditorGUILayout.EndHorizontal();
-
-            if (assetsConfig.assetsPaths.Count == 0) return;
-
-            int totalItems = assetsConfig.assetsPaths.Count;
-            int totalPages = Mathf.CeilToInt(totalItems / (float)itemsPerPage);
-            currentPage = Mathf.Clamp(currentPage, 0, Mathf.Max(totalPages - 1, 0));
-
-            int startIndex = currentPage * itemsPerPage;
-            int endIndex = Mathf.Min(startIndex + itemsPerPage, totalItems);
-
-            int? pendingRemoveIndex = null;
-
-            var removeButtonStyle = new GUIStyle(GUI.skin.button)
-            {
-                fontSize = 12,
-                fixedWidth = buttonSize,
-                fixedHeight = buttonSize,
-                alignment = TextAnchor.MiddleCenter
-            };
-
+            var (startIndex, endIndex, totalPages) = GetPagination(assetsConfig.assetsEntries.Count, itemsPerPage, ref currentPage);
+            var buttonStyle = HelperFunctions.InlineButtonStyle;
             for (int i = startIndex; i < endIndex; i++)
             {
-                var entry = assetsConfig.assetsPaths[i];
-
-                string fullPath = IOManager.CombinePaths(parentPath, entry.relativePath);
-                if (ShouldRefreshCache() || !fileExistenceCache.ContainsKey(fullPath))
-                {
-                    fileExistenceCache[fullPath] = IOManager.FileExists(fullPath);
-                    lastCacheRefreshTime = currentTime;
-                }
-                bool fileExists = fileExistenceCache[fullPath];
-
-                EditorGUILayout.BeginVertical("box");
-                EditorGUILayout.BeginHorizontal();
-
-                float labelWidth = position.width - buttonSize - spacing * 2;
-                string fullText = entry.ToString();
-                string truncated = TruncateWithEllipsis(fullText, EstimateMaxChars(labelWidth));
-                
-                string tooltip = fileExists ? fullText : $"{fullText} (Missing file: {fullPath})";
-                GUIContent labelContent = new(truncated, tooltip);
-                var entryLabelStyle = new GUIStyle(EditorStyles.label)
-                {
-                    fixedWidth = labelWidth,
-                    normal = { textColor = fileExists ? Color.white : Color.red },
-                };
-                StyledLabel(labelContent, entryLabelStyle);
-                //EditorGUILayout.LabelField(labelContent, GUILayout.Width(labelWidth));
-
-                GUILayout.FlexibleSpace();
-
-                GUIContent removeButton = new(removeButtonText, $"Remove Package");
-                StyledButton(removeButton, new(.9f, .3f, .2f), () => pendingRemoveIndex = i, removeButtonStyle);
-                
-                GUILayout.Space(spacing);
-
-                EditorGUILayout.EndHorizontal();
-                EditorGUILayout.EndVertical();
+                DrawPackageEntry(i, currentTime, buttonStyle);
             }
 
             if (pendingRemoveIndex.HasValue)
             {
-                assetsConfig.assetsPaths.RemoveAt(pendingRemoveIndex.Value);
-                fileExistenceCache.Clear();
-                EditorUtility.SetDirty(assetsConfig);
-                AssetDatabase.SaveAssets();
+                RemovePackageAt(pendingRemoveIndex.Value);
             }
 
             DrawPagination(totalPages);
         }
+
+        private void RemovePackageAt(int index)
+        {
+            Debug.Log("Removed: " + assetsConfig.assetsEntries[index].ToString());
+            assetsConfig.assetsEntries.RemoveAt(index);
+            fileExistenceCache.Clear();
+            EditorUtility.SetDirty(assetsConfig);
+            AssetDatabase.SaveAssets();
+            pendingRemoveIndex = null;
+        }
+
+        private void DrawHeaderBar()
+        {
+            EditorGUILayout.BeginHorizontal("helpBox");
+            EditorGUILayout.LabelField("Configured Package List", EditorStyles.boldLabel);
+            GUILayout.FlexibleSpace();
+
+            GUIContent addLocalButton = new(addLocalButtonText, "Add local package");
+            HelperFunctions.StyledButton(addLocalButton, Color.white, AddLocalPackage, HelperFunctions.InlineButtonStyle);
+            GUIContent addGlobalButton = new(addGlobalButtonText, "Add git package");
+            HelperFunctions.StyledButton(addGlobalButton, Color.white, AddGitPackage, HelperFunctions.InlineButtonStyle);
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private void DrawPackageEntry(int index, double currentTime, GUIStyle buttonStyle)
+        {
+            var entry = assetsConfig.assetsEntries[index];
+            string fullPath = IOManager.CombinePaths(parentPath, entry.path);
+
+            if (ShouldRefreshCache(currentTime) || !fileExistenceCache.ContainsKey(fullPath))
+            {
+                fileExistenceCache[fullPath] = IOManager.FileExists(fullPath);
+                lastCacheRefreshTime = currentTime;
+            }
+
+            bool fileExists = entry.sourceType == PackageSourceType.GitURL || fileExistenceCache[fullPath];
+
+            // Compute space based on active buttons
+            int buttonCount = fileExists ? 1 : 2;
+            float labelWidth = position.width - (buttonCount * buttonSize) - (spacing * buttonCount);
+
+            string fullText = entry.ToString();
+            string truncated = HelperFunctions.TruncateWithEllipsis(fullText, HelperFunctions.EstimateMaxChars(labelWidth, averageCharWidth));
+            string tooltip = fileExists ? fullText : $"Missing file: {fullPath}";
+
+            GUIContent labelContent = new(truncated, tooltip);
+            GUIStyle entryLabelStyle = new(EditorStyles.label)
+            {
+                fixedWidth = labelWidth,
+                normal = { textColor = fileExists ? Color.white : Color.red }
+            };
+
+            EditorGUILayout.BeginVertical("box");
+            EditorGUILayout.BeginHorizontal();
+
+            // Label
+            HelperFunctions.StyledLabel(labelContent, entryLabelStyle);
+            GUILayout.FlexibleSpace();
+
+            // 🔍 Locate (only if file is missing)
+            if (!fileExists)
+            {
+                GUIContent locateButton = new(locateButtonText, "Locate missing package");
+                HelperFunctions.StyledButton(
+                    locateButton,
+                    new Color(1f, 0.8f, 0.3f),
+                    () => LocateMissingPackage(index),
+                    buttonStyle
+                );
+            }
+
+            // 🗑 Remove
+            GUIContent removeButton = new(removeButtonText, "Remove package");
+            HelperFunctions.StyledButton(
+                removeButton,
+                new Color(0.9f, 0.3f, 0.2f),
+                () => pendingRemoveIndex = index,
+                buttonStyle
+            );
+
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
+        }
+
+        private bool ShouldRefreshCache(double time) => time - lastCacheRefreshTime > cacheRefreshInterval; 
 
         private void DrawPagination(int totalPages)
         {
@@ -251,7 +211,7 @@ namespace VT.Tools.EssentialAssetsImporter
         private void DrawImportAssetButton()
         {
             GUILayout.Space(spacing);
-            if (assetsConfig != null && assetsConfig.assetsPaths != null && assetsConfig.assetsPaths.Count > 0)
+            if (assetsConfig != null && assetsConfig.assetsEntries != null && assetsConfig.assetsEntries.Count > 0)
             {
                 var importButtonStyle = new GUIStyle(GUI.skin.button)
                 {
@@ -260,7 +220,7 @@ namespace VT.Tools.EssentialAssetsImporter
                     alignment = TextAnchor.MiddleCenter
                 };
 
-                StyledButton("Import All Assets", new Color(0.2f, 0.9f, 0.4f), ImportAllPackages, importButtonStyle);
+                HelperFunctions.StyledButton("Import All Assets", new Color(0.2f, 0.9f, 0.4f), ImportAllPackages, importButtonStyle);
             }
             else
             {
@@ -274,38 +234,136 @@ namespace VT.Tools.EssentialAssetsImporter
 
             if (guids.Length == 1)
             {
-                string path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                assetsConfig = AssetDatabase.LoadAssetAtPath<AssetsConfig>(path);
-                Debug.Log("Loaded config: " + path);
+                assetsConfig = LoadConfigAtGUID(guids[0]);
             }
             else if (guids.Length > 1)
             {
-                Debug.LogWarning("Multiple AssetsConfig files found. Please resolve manually.");
-                string folder = IOManager.GetDirectoryName(AssetDatabase.GUIDToAssetPath(guids[0]));
-                EditorUtility.RevealInFinder(folder);
+                assetsConfig = HandleMultipleConfigs(guids);
             }
             else
             {
-                string configFolder = ToolPathResolver.GetToolRelativePath("Config Data", "toolmarker-essential-assets-importer.txt");
-                string fullFolder = IOManager.GetAbsolutePath(Application.dataPath, configFolder.Replace("Assets/", ""));
+                CreateDefaultConfig();
+            }
 
-                if (!IOManager.DirectoryExists(fullFolder))
-                {
-                    IOManager.CreateDirectory(fullFolder);
-                    AssetDatabase.Refresh();
-                }
+            fileExistenceCache.Clear();
+        }
 
-                string assetPath = IOManager.CombinePaths(configFolder, "DefaultAssetsConfig.asset");
+        private AssetsConfig LoadConfigAtGUID(string guid)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            Debug.Log("Loaded config: " + path);
+            return AssetDatabase.LoadAssetAtPath<AssetsConfig>(path);
+        }
+
+        private AssetsConfig HandleMultipleConfigs(string[] guids)
+        {
+            string folder = IOManager.GetDirectoryName(AssetDatabase.GUIDToAssetPath(guids[0]));
+            string selectedPath = EditorUtility.OpenFilePanel("Select AssetsConfig", folder, "asset");
+
+            if (string.IsNullOrEmpty(selectedPath))
+            {
+                Debug.LogWarning("No config selected. Load aborted.");
+                return null;
+            }
+
+            string relativePath = IOManager.GetUnityRelativePath(selectedPath);
+
+            var config = AssetDatabase.LoadAssetAtPath<AssetsConfig>(relativePath);
+
+            if (config == null)
+            {
+                Debug.LogError("Failed to load selected AssetsConfig. Make sure it's a valid asset.");
+            }
+
+            return config;
+        }
+
+        private void CreateDefaultConfig()
+        {
+            if (!IOManager.AssetDirectoryExists(configFolderPath))
+            {
+                IOManager.CreateAssetDirectoryRecursive(configFolderPath);
+            }
+
+            if (IOManager.AssetDirectoryExists(configFolderPath))
+            {
+                var assetPath = IOManager.CombinePaths(configFolderPath, "DefaultAssetsConfig.asset");
                 assetsConfig = CreateInstance<AssetsConfig>();
                 AssetDatabase.CreateAsset(assetsConfig, assetPath);
                 AssetDatabase.SaveAssets();
+
+                EditorGUIUtility.PingObject(assetsConfig);
+
                 Debug.Log("Created new AssetsConfig at: " + assetPath);
+            }
+        }
+
+        private void LocateMissingPackage(int index)
+        {
+            if (index < 0 || index >= assetsConfig.assetsEntries.Count)
+            {
+                Debug.LogError("Invalid index for locating missing package.");
+                return;
+            }
+
+            var entry = assetsConfig.assetsEntries[index];
+
+            string selectedPath = EditorUtility.OpenFilePanel("Locate UnityPackage", parentPath, "unitypackage");
+
+            if (!string.IsNullOrEmpty(selectedPath) && selectedPath.EndsWith(".unitypackage"))
+            {
+                string relativePath = IOManager.GetRelativePath(parentPath, selectedPath);
+
+                if (string.IsNullOrEmpty(relativePath))
+                {
+                    Debug.LogError("Failed to convert selected path to relative form.");
+                    return;
+                }
+
+                // Avoid duplicates (excluding self)
+                bool isDuplicate = assetsConfig.assetsEntries.Exists(e =>
+                    e != entry && e.sourceType == PackageSourceType.LocalUnityPackage && e.path == relativePath);
+
+                if (isDuplicate)
+                {
+                    Debug.LogWarning("This asset is already in the config.");
+                    return;
+                }
+
+                entry.sourceType = PackageSourceType.LocalUnityPackage;
+                entry.path = relativePath;
+
+                EditorUtility.SetDirty(assetsConfig);
+                AssetDatabase.SaveAssets();
+
+                Debug.Log("Located: " + entry.ToString());
             }
 
             fileExistenceCache.Clear();
         }
 
         private void AddPackage()
+        {
+            int choice = EditorUtility.DisplayDialogComplex(
+                "Add Package",
+                "Choose the type of package you want to add:",
+                "Local .unitypackage",   // returns 0
+                "Cancel",                // returns 1
+                "Git URL"                // returns 2
+            );
+
+            switch (choice)
+            {
+                case 0: AddLocalPackage(); break;  // Local
+                case 2: AddGitPackage(); break;  // Git
+                case 1:
+                default: return;                   // Cancel
+            }
+
+            fileExistenceCache.Clear();
+        }
+
+        private void AddLocalPackage()
         {
             string selectedPath = EditorUtility.OpenFilePanel("Select UnityPackage", parentPath, "unitypackage");
 
@@ -319,127 +377,212 @@ namespace VT.Tools.EssentialAssetsImporter
                     return;
                 }
 
-                if (assetsConfig.assetsPaths.Exists(entry => entry.relativePath == relativePath))
+                bool isDuplicate = assetsConfig.assetsEntries.Exists(entry =>
+                    entry.sourceType == PackageSourceType.LocalUnityPackage &&
+                    entry.path == relativePath);
+
+                if (isDuplicate)
                 {
                     Debug.LogWarning("This asset is already in the config.");
                     return;
                 }
 
-                assetsConfig.assetsPaths.Add(new AssetsConfig.AssetEntry { relativePath = relativePath });
+                assetsConfig.assetsEntries.Add(new AssetEntry
+                {
+                    sourceType = PackageSourceType.LocalUnityPackage,
+                    path = relativePath
+                });
+
                 EditorUtility.SetDirty(assetsConfig);
                 AssetDatabase.SaveAssets();
+
                 Debug.Log("Added: " + relativePath);
             }
 
             fileExistenceCache.Clear();
         }
 
+        private void AddGitPackage()
+        {
+            GitUrlInputPopup.Show(url =>
+            {
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    Debug.LogWarning("Git URL is empty.");
+                    return;
+                }
+
+                if (!url.StartsWith("https://") && !url.StartsWith("git@"))
+                {
+                    Debug.LogError("Invalid Git URL.");
+                    return;
+                }
+
+                bool isDuplicate = assetsConfig.assetsEntries.Exists(entry =>
+                    entry.sourceType == PackageSourceType.GitURL &&
+                    entry.path == url);
+
+                if (isDuplicate)
+                {
+                    Debug.LogWarning("This Git URL is already in the config.");
+                    return;
+                }
+
+                assetsConfig.assetsEntries.Add(new AssetEntry
+                {
+                    sourceType = PackageSourceType.GitURL,
+                    path = url
+                });
+
+                EditorUtility.SetDirty(assetsConfig);
+                AssetDatabase.SaveAssets();
+
+                Debug.Log("Added Git package: " + url);
+            });
+
+            fileExistenceCache.Clear();
+        }
+
         private void ImportAllPackages()
         {
-            if (assetsConfig.assetsPaths == null || assetsConfig.assetsPaths.Count == 0)
+            if (assetsConfig.assetsEntries == null || assetsConfig.assetsEntries.Count == 0)
             {
                 Debug.LogWarning("No asset paths configured.");
                 return;
             }
 
-            foreach (var entry in assetsConfig.assetsPaths)
+            foreach (var entry in assetsConfig.assetsEntries)
             {
-                string fullPath = IOManager.CombinePaths(parentPath, entry.relativePath);
-
-                if (!IOManager.FileExists(fullPath))
+                if (entry.sourceType == PackageSourceType.LocalUnityPackage)
                 {
-                    Debug.LogWarning($"Package not found: {fullPath}");
-                    continue;
+                    string fullPath = IOManager.CombinePaths(parentPath, entry.path);
+                    bool fileExists = fileExistenceCache.ContainsKey(fullPath)
+                        ? fileExistenceCache[fullPath]
+                        : IOManager.FileExists(fullPath);
+
+                    if (!fileExists)
+                    {
+                        Debug.LogWarning($"Package not found: {fullPath}");
+                        continue;
+                    }
+
+                    Debug.Log($"Importing local package: {entry}");
+                    AssetDatabase.ImportPackage(fullPath, false);
                 }
-
-                Debug.Log($"Importing package: {entry.relativePath}");
-                AssetDatabase.ImportPackage(fullPath, false);
+                else if (entry.sourceType == PackageSourceType.GitURL)
+                {
+                    Debug.Log($"Registering Git package: {entry.path}");
+                    AddGitPackageToManifest(entry.path);
+                }
+                else
+                {
+                    Debug.LogWarning($"Unsupported package source: {entry}");
+                }
             }
+
+            fileExistenceCache.Clear();
         }
 
-        public static string GetAssetStoreBasePath()
+        private (int start, int end, int totalPages) GetPagination(int totalItems, int itemsPerPage, ref int currentPage)
         {
-            return Application.platform switch
-            {
-                RuntimePlatform.WindowsEditor => IOManager.CombinePaths(
-                    System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
-                    "Unity", "Asset Store-5.x"),
-
-                RuntimePlatform.OSXEditor => IOManager.CombinePaths(
-                    System.Environment.GetFolderPath(System.Environment.SpecialFolder.Personal),
-                    "Library", "Unity", "Asset Store-5.x"),
-
-                _ => throw new System.NotSupportedException("Unsupported platform.")
-            };
+            int totalPages = Mathf.CeilToInt(totalItems / (float)itemsPerPage);
+            currentPage = Mathf.Clamp(currentPage, 0, Mathf.Max(0, totalPages - 1));
+            int start = currentPage * itemsPerPage;
+            int end = Mathf.Min(start + itemsPerPage, totalItems);
+            return (start, end, totalPages);
         }
 
-        private string TruncateWithEllipsis(string text, int maxLength)
+        private void AddGitPackageToManifest(string gitUrl)
         {
-            return string.IsNullOrEmpty(text) ? string.Empty : (text.Length <= maxLength ? text : text[..(Mathf.Max(maxLength - 4, 0))] + "...");
+            string manifestPath = IOManager.CombinePaths(Application.dataPath, "../Packages/manifest.json");
+            string jsonText = IOManager.ReadAllText(manifestPath);
+
+            var manifest = JsonUtility.FromJson<SimpleManifestWrapper>(jsonText);
+            if (manifest == null || manifest.dependencies == null)
+            {
+                Debug.LogError("Failed to parse manifest.json. Cannot add Git package.");
+                return;
+            }
+
+            // Extract repo name from URL to use as key
+            string key = ExtractGitPackageName(gitUrl);
+            if (string.IsNullOrEmpty(key)) key = gitUrl; // fallback
+
+            if (manifest.dependencies.ContainsKey(key))
+            {
+                Debug.Log($"Git package already in manifest: {key}");
+                return;
+            }
+
+            manifest.dependencies[key] = gitUrl;
+
+            // Overwrite manifest.json manually
+            string updatedJson = JsonUtility.ToJson(manifest, true);
+            updatedJson = FixJsonForDependencies(updatedJson); // workaround for Unity's JsonUtility limitations
+            File.WriteAllText(manifestPath, updatedJson);
+
+            Debug.Log($"Added Git package to manifest: {key}");
+            AssetDatabase.Refresh();
         }
 
-        private int EstimateMaxChars(float width) => Mathf.FloorToInt(width / averageCharWidth);
-
-        private void StyledButton(string label, Color backgroundColor, Action onClick, GUIStyle style = null)
+        [Serializable]
+        public class SimpleManifestWrapper
         {
-            Color previousColor = GUI.backgroundColor;
-            GUI.backgroundColor = backgroundColor;
-
-            if (style != null)
-            {
-                if (GUILayout.Button(label, style))
-                    onClick?.Invoke();
-            }
-            else
-            {
-                if (GUILayout.Button(label))
-                    onClick?.Invoke();
-            }
-
-            GUI.backgroundColor = previousColor;
+            public Dictionary<string, string> dependencies = new();
         }
 
-        private void StyledButton(GUIContent content, Color backgroundColor, Action onClick, GUIStyle style = null)
+        private string FixJsonForDependencies(string json)
         {
-            Color previousColor = GUI.backgroundColor;
-            GUI.backgroundColor = backgroundColor;
-
-            if (style != null)
+            const string key = "\"dependencies\":";
+            int startIndex = json.IndexOf(key);
+            if (startIndex == -1)
             {
-                if (GUILayout.Button(content, style))
-                    onClick?.Invoke();
-            }
-            else
-            {
-                if (GUILayout.Button(content))
-                    onClick?.Invoke();
+                Debug.LogError("Could not find 'dependencies' in manifest.json.");
+                return json;
             }
 
-            GUI.backgroundColor = previousColor;
+            startIndex += key.Length;
+
+            int openBraceIndex = json.IndexOf('{', startIndex);
+            if (openBraceIndex == -1)
+            {
+                Debug.LogError("Malformed dependencies block (missing opening brace).");
+                return json;
+            }
+
+            int closeBraceIndex = json.IndexOf('}', openBraceIndex);
+            if (closeBraceIndex == -1)
+            {
+                Debug.LogError("Malformed dependencies block (missing closing brace).");
+                return json;
+            }
+
+            string before = json.Substring(0, openBraceIndex + 1);
+            string after = json.Substring(closeBraceIndex);
+
+            var parsed = JsonUtility.FromJson<SimpleManifestWrapper>(json);
+            if (parsed == null || parsed.dependencies == null)
+            {
+                Debug.LogError("Failed to parse manifest into SimpleManifestWrapper.");
+                return json;
+            }
+
+            var lines = new List<string>();
+            foreach (var kv in parsed.dependencies)
+            {
+                lines.Add($"    \"{kv.Key}\": \"{kv.Value}\"");
+            }
+
+            return before + "\n" + string.Join(",\n", lines) + "\n  }" + after;
         }
 
-        private void StyledLabel(string label, GUIStyle style = null)
+        private string ExtractGitPackageName(string url)
         {
-            if (style != null)
-            {
-                EditorGUILayout.LabelField(label, style);
-            }
-            else
-            {
-                EditorGUILayout.LabelField(label);
-            }
-        }
+            if (url.EndsWith(".git"))
+                url = url.Substring(0, url.Length - 4);
 
-        private void StyledLabel(GUIContent content, GUIStyle style = null)
-        {
-            if (style != null)
-            {
-                EditorGUILayout.LabelField(content, style);
-            }
-            else
-            {
-                EditorGUILayout.LabelField(content);
-            }
+            var parts = url.Split('/', '\\');
+            return parts.Length > 0 ? parts[^1] : null;
         }
     }
 }
