@@ -9,7 +9,6 @@ namespace VT.Tools.EssentialAssetsImporter
     {
         [BoxGroup("Entries")]
         [TableList]
-        [ReadOnly]
         [HideLabel]
         public List<AssetEntry> assetsEntries = new();
     }

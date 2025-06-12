@@ -5,7 +5,7 @@ using VT.IO;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
-    public static class HelperFunctions
+    public static class Backend
     {
         public static string GetAssetStoreBasePath()
         {
