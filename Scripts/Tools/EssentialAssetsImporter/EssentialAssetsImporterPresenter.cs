@@ -11,7 +11,8 @@ namespace VT.Tools.EssentialAssetsImporter
     // Presenters/EssentialAssetsImporterPresenter.cs
     public class EssentialAssetsImporterPresenter : IDisposable
     {
-        public EssentialAssetsImporterPresenter(IEssentialAssetsImporterView view, IAssetsConfigModel model)
+        //public EssentialAssetsImporterPresenter(IEssentialAssetsImporterView view, IAssetsConfigModel model)
+        public EssentialAssetsImporterPresenter(EssentialAssetsImporterWindow view, AssetsConfigModel model)
         {
             this.view = view;
             this.model = model;
@@ -21,7 +22,7 @@ namespace VT.Tools.EssentialAssetsImporter
             view.OnAddGitRequested += HandleAddGit;
             view.OnLocateRequested += HandleLocate;
             view.OnRemoveRequested += HandleRemove;
-            view.OnImportAllRequested += HandleImport;
+            view.OnImportAllRequested += HandleImportAsync;
             view.OnRefreshRequested += HandleRefreshRequested;
             view.OnPageChanged += HandlePageChange;
             view.OnSelectConfigRequested += HandleSelectConfig;
@@ -41,7 +42,7 @@ namespace VT.Tools.EssentialAssetsImporter
             view.OnAddGitRequested -= HandleAddGit;
             view.OnLocateRequested -= HandleLocate;
             view.OnRemoveRequested -= HandleRemove;
-            view.OnImportAllRequested -= HandleImport;
+            view.OnImportAllRequested -= HandleImportAsync;
             view.OnRefreshRequested -= HandleRefreshRequested;
             view.OnPageChanged -= HandlePageChange;
             view.OnSelectConfigRequested -= HandleSelectConfig;
@@ -58,8 +59,10 @@ namespace VT.Tools.EssentialAssetsImporter
         }
 
         private bool hasInit = false;
-        private readonly IEssentialAssetsImporterView view;
-        private readonly IAssetsConfigModel model;
+        //private readonly IEssentialAssetsImporterView view;
+        //private readonly IAssetsConfigModel model;
+        private readonly EssentialAssetsImporterWindow view;
+        private readonly AssetsConfigModel model;
         private List<AssetsConfig> configs;
         private int currentConfigIndex;
         private int currentPage = 0;
@@ -83,12 +86,11 @@ namespace VT.Tools.EssentialAssetsImporter
 
         private void RefreshAllConfigs()
         {
-            configs = model
-                .GetAllConfigs()
-                .ToList();
+            configs = model.GetAllConfigs().ToList();
 
             // auto-select first if nothing selected
             currentConfigIndex = Mathf.Clamp(currentConfigIndex, 0, configs.Count - 1);
+
             if (configs.Count > 0)
                 model.SelectConfig(configs[currentConfigIndex]);
 
@@ -106,7 +108,18 @@ namespace VT.Tools.EssentialAssetsImporter
             // 2) Push the selected asset into the view header
             view.UpdateConfigAsset(model.Config);
 
-            // 3) Build & page‐slice view‐models exactly like before
+            // 3) Build & page‐slice view‐models
+            var entryViewModels = BuildEntryViewModels();
+
+            // 4) Render
+            view.UpdateEntriesViewModels(entryViewModels);
+            view.UpdatePageInfo(currentPage, totalPages);
+
+            InternalLogger.Instance.LogDebug("[Presenter] ✔ Refresh complete");
+        }
+
+        private List<AssetEntryViewModel> BuildEntryViewModels()
+        {
             var all = model.Entries;
             totalPages = Mathf.CeilToInt(all.Count / (float)pageSize);
             currentPage = Mathf.Clamp(currentPage, 0, Mathf.Max(0, totalPages - 1));
@@ -120,91 +133,24 @@ namespace VT.Tools.EssentialAssetsImporter
                   Exists = model.FileExists(e)
               })
               .ToList();
-
-            // 4) Render
-            view.UpdateEntriesViewModels(vms);
-            view.UpdatePageInfo(currentPage, totalPages);
-
-            InternalLogger.Instance.LogDebug("[Presenter] ✔ Refresh complete");
+            return vms;
         }
 
         private void HandleAddLocal()
         {
-            // ask the view to pop up a file dialog
-            string absolute = EditorUtility.OpenFilePanel(
-                "Select UnityPackage",
-                model.ParentPath,
-                "unitypackage"
-            );
-            if (string.IsNullOrEmpty(absolute)) return;
-
-            string relative = IOManager.GetRelativePath(model.ParentPath, absolute);
-            var entry = new AssetEntry
-            {
-                sourceType = PackageSourceType.LocalUnityPackage,
-                path = relative
-            };
-            model.AddEntry(entry);
+            model.HandleAddLocal();
             Refresh();
         }
 
-        private void HandleAddGit()
+        private void HandleAddGit(string gitURL)
         {
-            var entry = new AssetEntry(); /* popup for git URL */
-            if (entry != null) model.AddEntry(entry);
+            model.HandleAddGit(gitURL);
             Refresh();
         }
 
         private void HandleLocate(int index)
         {
-            // 1) bounds‐check
-            var all = model.Entries;
-            if (index < 0 || index >= all.Count)
-            {
-                InternalLogger.Instance.LogError($"[Presenter] Invalid locate index: {index}");
-                return;
-            }
-
-            // 2) pick the entry to update
-            var entry = all[index];
-
-            // 3) show file panel
-            string selected = EditorUtility.OpenFilePanel(
-                "Locate UnityPackage",
-                model.ParentPath,
-                "unitypackage"
-            );
-            if (string.IsNullOrEmpty(selected) || !selected.EndsWith(".unitypackage"))
-                return;
-
-            // 4) convert to relative
-            string relative = IOManager.GetRelativePath(model.ParentPath, selected);
-            if (string.IsNullOrEmpty(relative))
-            {
-                InternalLogger.Instance.LogError("[Presenter] Failed to compute relative path");
-                return;
-            }
-
-            // 5) duplicate check (excluding this entry)
-            bool dup = all.Exists(e =>
-                e != entry &&
-                e.sourceType == PackageSourceType.LocalUnityPackage &&
-                e.path == relative
-            );
-            if (dup)
-            {
-                InternalLogger.Instance.LogWarning("[Presenter] This asset is already in the config.");
-                return;
-            }
-
-            // 6) apply the update on the model
-            entry.sourceType = PackageSourceType.LocalUnityPackage;
-            entry.path = relative;
-            model.SaveConfig();
-
-            InternalLogger.Instance.LogDebug($"[Presenter] Located package #{index} → {relative}");
-
-            // 7) refresh the view
+            model.HandleLocate(index);
             Refresh();
         }
 
@@ -215,22 +161,10 @@ namespace VT.Tools.EssentialAssetsImporter
             Refresh();
         }
 
-        private void HandleImport()
+        private async void HandleImportAsync()
         {
-            foreach (var e in model.Entries)
-            {
-                if (e.sourceType == PackageSourceType.LocalUnityPackage && model.FileExists(e))
-                {
-                    AssetDatabase.ImportPackage(
-                       IOManager.CombinePaths(model.ParentPath, e.path),
-                       false
-                    );
-                }
-                else if (e.sourceType == PackageSourceType.GitURL)
-                {
-                    /* register to manifest… */
-                }
-            }
+            await model.HandleImportAsync();
+            Refresh();
         }
 
         private void HandlePageChange(int page)

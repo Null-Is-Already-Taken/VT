@@ -77,6 +77,34 @@ namespace VT.IO
             return Regex.Replace(unified, $"{Regex.Escape(sep.ToString())}+", sep.ToString());
         }
 
+        public static string GetURIFileName(Uri uri)
+        {
+            return Path.GetFileName(uri.LocalPath);
+        }
+
+        public static string GetURIVersion(Uri uri)
+        {
+            var segments = uri.AbsoluteUri.Split('/');
+            for (int i = 0; i < segments.Length - 1; i++)
+            {
+                if (segments[i].Equals("download", StringComparison.OrdinalIgnoreCase))
+                    return segments[i + 1];
+            }
+            return "unknown";
+        }
+
+        public static string GetURIPackageName(Uri uri)
+        {
+            string fileName = GetURIFileName(uri);
+            string version = GetURIVersion(uri);
+            if (fileName.Contains(version))
+                return fileName
+                    .Replace(version, "")
+                    .Replace(".unitypackage", "")
+                    .TrimEnd('.');
+            return GetFileNameWithoutExtension(fileName);
+        }
+
         public static string GetFileNameWithoutExtension(string path)
         {
             if (string.IsNullOrEmpty(path)) return null;

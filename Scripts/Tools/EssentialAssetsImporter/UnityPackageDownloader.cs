@@ -1,10 +1,12 @@
 #if UNITY_EDITOR
-
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
+using VT.IO;
+using VT.Logger;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
@@ -15,77 +17,96 @@ namespace VT.Tools.EssentialAssetsImporter
         public static event Action<string, string> OnDownloadCompleted;
         public static event Action<string, string> OnDownloadFailed;
 
-        private static readonly string PackageCacheRoot = Path.Combine(
+        private static readonly string PackageCacheRoot = IOManager.CombinePaths
+        (
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "EssentialAssetImporter", "Cache");
+            "EssentialAssetImporter", "Cache"
+        );
 
-        public static async Task<string> DownloadUnityPackage(string url)
+        /// <summary>
+        /// Downloads a .unitypackage, streaming it to disk.
+        /// </summary>
+        /// <param name="url">HTTP(S) URL ending in ".unitypackage"</param>
+        /// <param name="cancellationToken">Optional token to cancel/abort</param>
+        /// <returns>The local file path, or null on failure.</returns>
+        public static async Task<string> DownloadUnityPackage(string url, CancellationToken cancellationToken = default)
         {
-            if (!url.EndsWith(".unitypackage"))
+            // 1) Validate URL
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
+                || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+                || !uri.AbsolutePath.EndsWith(".unitypackage", StringComparison.OrdinalIgnoreCase))
             {
-                OnDownloadFailed?.Invoke(url, "URL must end with .unitypackage");
+                OnDownloadFailed?.Invoke(url, "Invalid UnityPackage URL");
                 return null;
             }
 
-            string fileName = Path.GetFileName(url);
-            string version = ExtractVersion(url);
-            string packageName = ExtractPackageName(fileName, version);
-            string targetFolder = Path.Combine(PackageCacheRoot, packageName, version);
-            string targetPath = Path.Combine(targetFolder, fileName);
+            // 2) Compute paths
+            string fileName = IOManager.GetURIFileName(uri);
+            string version = IOManager.GetURIVersion(uri);
+            string packageName = IOManager.GetURIPackageName(uri);
+            string targetFolder = IOManager.CombinePaths(PackageCacheRoot, packageName, version);
+            string targetPath = IOManager.CombinePaths(targetFolder, fileName);
 
-            if (File.Exists(targetPath))
+            // 3) Already cached?
+            if (IOManager.FileExists(targetPath))
             {
-                Debug.Log($"Package already exists at: {targetPath}");
                 OnDownloadCompleted?.Invoke(url, targetPath);
                 return targetPath;
             }
 
-            Directory.CreateDirectory(targetFolder);
+            // 4) Prepare folder
+            try
+            {
+                IOManager.CreateDirectory(targetFolder);
+            }
+            catch (Exception ex)
+            {
+                OnDownloadFailed?.Invoke(url, $"Failed to create cache folder: {ex.Message}");
+                return null;
+            }
+
             OnDownloadStarted?.Invoke(url);
 
-            using (UnityWebRequest request = UnityWebRequest.Get(url))
+            // 5) Start request with stream handler
+            using (var request = UnityWebRequest.Get(url))
             {
-                UnityWebRequestAsyncOperation operation = request.SendWebRequest();
+                // DownloadHandlerFile will write directly to disk
+                request.downloadHandler = new DownloadHandlerFile(targetPath);
 
-                while (!operation.isDone)
+                // Abort if cancellation is requested
+                using (cancellationToken.Register(() => request.Abort()))
                 {
-                    OnDownloadProgress?.Invoke(url, request.downloadProgress);
-                    await Task.Yield();
+                    var op = request.SendWebRequest();
+                    while (!op.isDone)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        OnDownloadProgress?.Invoke(url, request.downloadProgress);
+                        await Task.Yield();
+                    }
                 }
 
+                // 6) Check result
                 if (request.result != UnityWebRequest.Result.Success)
                 {
-                    Debug.LogError($"Failed to download package: {request.error}");
-                    OnDownloadFailed?.Invoke(url, request.error);
+                    var error = cancellationToken.IsCancellationRequested
+                        ? "Download canceled"
+                        : request.error;
+
+                    InternalLogger.Instance.LogError($"[UnityPackageDownloader] Failed: {error}");
+                    OnDownloadFailed?.Invoke(url, error);
+
+                    // remove partial file
+                    try { if (File.Exists(targetPath)) File.Delete(targetPath); } catch { }
+
                     return null;
                 }
 
-                File.WriteAllBytes(targetPath, request.downloadHandler.data);
-                Debug.Log($"Downloaded to: {targetPath}");
+                InternalLogger.Instance.LogDebug($"[UnityPackageDownloader] Completed: {targetPath}");
                 OnDownloadCompleted?.Invoke(url, targetPath);
             }
 
             return targetPath;
         }
-
-        private static string ExtractVersion(string url)
-        {
-            var segments = url.Split('/');
-            for (int i = 0; i < segments.Length; i++)
-            {
-                if (segments[i] == "download" && i + 1 < segments.Length)
-                    return segments[i + 1];
-            }
-            return "unknown";
-        }
-
-        private static string ExtractPackageName(string fileName, string version)
-        {
-            if (fileName.Contains(version))
-                return fileName.Replace(version, "").Replace(".unitypackage", "").TrimEnd('.');
-            return Path.GetFileNameWithoutExtension(fileName);
-        }
     }
 }
-
 #endif

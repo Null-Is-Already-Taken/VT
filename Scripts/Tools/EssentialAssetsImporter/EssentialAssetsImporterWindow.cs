@@ -14,26 +14,26 @@ namespace VT.Tools.EssentialAssetsImporter
         public bool Exists { get; set; }
     }
 
-    public interface IEssentialAssetsImporterView
-    {
-        event Action OnLoadConfigRequested;
-        event Action<int> OnLocateRequested;
-        event Action<int> OnRemoveRequested;
-        event Action OnAddLocalRequested;
-        event Action OnAddGitRequested;
-        event Action OnImportAllRequested;
-        event Action OnRefreshRequested;
-        event Action<int> OnPageChanged;
-        event Action<int> OnSelectConfigRequested;
+    //public interface IEssentialAssetsImporterView
+    //{
+    //    event Action OnLoadConfigRequested;
+    //    event Action<int> OnLocateRequested;
+    //    event Action<int> OnRemoveRequested;
+    //    event Action OnAddLocalRequested;
+    //    event Action<string> OnAddGitRequested;
+    //    event Action OnImportAllRequested;
+    //    event Action OnRefreshRequested;
+    //    event Action<int> OnPageChanged;
+    //    event Action<int> OnSelectConfigRequested;
 
-        void UpdateConfigList(List<AssetsConfig> configList);
-        void UpdateConfigPageInfo(int selectedIndex, int totalConfigs);
-        void UpdateConfigAsset(AssetsConfig config);
-        void UpdateEntriesViewModels(List<AssetEntryViewModel> entries);
-        void UpdatePageInfo(int currentPage, int totalPages);
-    }
+    //    void UpdateConfigList(List<AssetsConfig> configList);
+    //    void UpdateConfigPageInfo(int selectedIndex, int totalConfigs);
+    //    void UpdateConfigAsset(AssetsConfig config);
+    //    void UpdateEntriesViewModels(List<AssetEntryViewModel> entries);
+    //    void UpdatePageInfo(int currentPage, int totalPages);
+    //}
 
-    public class EssentialAssetsImporterWindow : EditorWindow, IEssentialAssetsImporterView
+    public class EssentialAssetsImporterWindow : EditorWindow//, IEssentialAssetsImporterView
     {
         // Serialize so they survive domain reload
         [SerializeField] private AssetsConfigModel model;
@@ -44,7 +44,7 @@ namespace VT.Tools.EssentialAssetsImporter
         public event Action<int> OnLocateRequested;
         public event Action<int> OnRemoveRequested;
         public event Action OnAddLocalRequested;
-        public event Action OnAddGitRequested;
+        public event Action<string> OnAddGitRequested;
         public event Action OnImportAllRequested;
         public event Action OnRefreshRequested;
         public event Action<int> OnPageChanged;
@@ -116,6 +116,10 @@ namespace VT.Tools.EssentialAssetsImporter
 
         // scroll view state
         private Vector2 scrollPos;
+        
+        private bool addingGitUrl = false;
+        private string newGitUrl = "";
+
 
         private void OnEnable()
         {
@@ -183,27 +187,77 @@ namespace VT.Tools.EssentialAssetsImporter
         private void DrawHeaderBar()
         {
             GUILayout.Space(spacing);
-            using (new EditorGUILayout.HorizontalScope("helpBox"))
+
+            using (new EditorGUILayout.VerticalScope("helpBox"))
             {
-                Label.Draw("Configured Package List", LabelStyles.BoldLabel);
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    Label.Draw("Configured Package List", LabelStyles.BoldLabel);
 
-                GUILayout.FlexibleSpace();
+                    GUILayout.FlexibleSpace();
 
-                Button.Draw
-                (
-                    content: new(addLocalButtonIcon, "Add local package"),
-                    backgroundColor: Color.white,
-                    onClick: () => OnAddLocalRequested?.Invoke(),
-                    style: ButtonStyles.Inline
-                );
+                    Button.Draw
+                    (
+                        content: new(addLocalButtonIcon, "Add local package"),
+                        backgroundColor: Color.white,
+                        onClick: () => OnAddLocalRequested?.Invoke(),
+                        style: ButtonStyles.Inline
+                    );
 
-                Button.Draw
-                (
-                    content: new(addGlobalButtonIcon, "Add git package"),
-                    backgroundColor: Color.white,
-                    onClick: () => OnAddGitRequested?.Invoke(),
-                    style: ButtonStyles.Inline
-                );
+                    Button.Draw
+                    (
+                        content: new(addGlobalButtonIcon, "Add git package"),
+                        backgroundColor: Color.white,
+                        onClick: () =>
+                        {
+                            addingGitUrl = true; // Toggle visibility
+                        },
+                        style: ButtonStyles.Inline
+                    );
+                }
+
+                if (addingGitUrl)
+                {
+                    DrawGitUrlFieldSection();
+                }
+            }
+        }
+
+        private void DrawGitUrlFieldSection()
+        {
+            using (new EditorGUILayout.VerticalScope("box"))
+            {
+                GUILayout.Label("Enter Git URL:", EditorStyles.boldLabel);
+
+                newGitUrl = EditorGUILayout.TextField(newGitUrl);
+
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    Button.Draw
+                    (
+                        content: new GUIContent("Add"),
+                        backgroundColor: Color.white,
+                        onClick: () =>
+                        {
+                            OnAddGitRequested?.Invoke(newGitUrl);
+                            addingGitUrl = false;
+                            newGitUrl = "";
+                        },
+                        style: ButtonStyles.Compact
+                    );
+
+                    Button.Draw
+                    (
+                        content: new GUIContent("Cancel"),
+                        backgroundColor: Color.white,
+                        onClick: () =>
+                        {
+                            addingGitUrl = false;
+                            newGitUrl = "";
+                        },
+                        style: ButtonStyles.Compact
+                    );
+                }
             }
         }
 
@@ -224,7 +278,7 @@ namespace VT.Tools.EssentialAssetsImporter
             {
                 Label.DrawTruncatedLabel(
                     fullText: vm.Entry.ToString(),
-                    tooltip: exists ? vm.Entry.ToString() : $"Missing file: {vm.Entry.path}",
+                    tooltip: exists ? vm.Entry.path : $"Missing file: {vm.Entry.path}",
                     availableWidth: labelWidth,
                     averageCharWidth: averageCharWidth,
                     exists: exists

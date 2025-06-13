@@ -1,5 +1,7 @@
 ﻿#if UNITY_EDITOR
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 using VT.Editor.Utils;
@@ -9,34 +11,33 @@ using VT.Logger;
 namespace VT.Tools.EssentialAssetsImporter
 {
     // Models/IAssetsConfigModel.cs
-    public interface IAssetsConfigModel
-    {
-        List<AssetEntry> Entries { get; }
-        string ParentPath { get; }
-        string ConfigFolderPath { get; }
-        AssetsConfig Config { get; }
-        IEnumerable<AssetsConfig> GetAllConfigs();
-        void SelectConfig(AssetsConfig config);
-        void ReloadCurrentConfig();
-        void LoadConfig();
-        void SaveConfig();
-        void AddEntry(AssetEntry entry);
-        void RemoveEntry(AssetEntry entry);
-        bool FileExists(AssetEntry entry);
-    }
+    //public interface IAssetsConfigModel
+    //{
+    //    List<AssetEntry> Entries { get; }
+    //    string ParentPath { get; }
+    //    string ConfigFolderPath { get; }
+    //    AssetsConfig Config { get; }
+    //    IEnumerable<AssetsConfig> GetAllConfigs();
+    //    void SelectConfig(AssetsConfig config);
+    //    void ReloadCurrentConfig();
+    //    void LoadConfig();
+    //    void SaveConfig();
+    //    void AddEntry(AssetEntry entry);
+    //    void RemoveEntry(AssetEntry entry);
+    //    bool FileExists(AssetEntry entry);
+    //    void HandleAddLocal();
+    //    void HandleAddGit(string gitURL);
+    //    void HandleLocate(int index);
+    //    void HandleImport();
+    //}
 
     // Models/AssetsConfigModel.cs
-    public class AssetsConfigModel : IAssetsConfigModel
+    public class AssetsConfigModel //: IAssetsConfigModel
     {
         public List<AssetEntry> Entries => config.assetsEntries;
         public string ParentPath => parentPath;
         public string ConfigFolderPath => configFolderPath;
         public AssetsConfig Config => config;
-
-        //public AssetsConfigModel()
-        //{
-        //    parentPath = PathUtils.GetAssetStoreBasePath();
-        //}
 
         public IEnumerable<AssetsConfig> GetAllConfigs()
         {
@@ -159,12 +160,14 @@ namespace VT.Tools.EssentialAssetsImporter
             }
             else
             {
-                InternalLogger.Instance.LogWarning($"Tried to remove non-existent entry: {entry}");
+                InternalLogger.Instance.LogDebug($"[AssetsConfigModel] Tried to remove non-existent entry: {entry}");
             }
         }
 
         public bool FileExists(AssetEntry entry)
         {
+            if (entry.sourceType == PackageSourceType.GitURL) return true; // Git URLs are always considered "exists" since they are not local files
+
             var full = IOManager.CombinePaths(parentPath, entry.path);
             if (!fileExistenceCache.TryGetValue(full, out var exists))
             {
@@ -172,6 +175,142 @@ namespace VT.Tools.EssentialAssetsImporter
                 fileExistenceCache[full] = exists;
             }
             return exists;
+        }
+
+        public void HandleAddLocal()
+        {
+            // open a file dialog to get file path
+            string absolute = EditorUtility.OpenFilePanel(
+                "Select UnityPackage",
+                ParentPath,
+                "unitypackage"
+            );
+
+            if (string.IsNullOrEmpty(absolute)) return;
+
+            string relative = IOManager.GetRelativePath(ParentPath, absolute);
+
+            if (string.IsNullOrEmpty(relative) || !relative.EndsWith(".unitypackage"))
+            {
+                return;
+            }
+
+            var entry = new AssetEntry
+            {
+                sourceType = PackageSourceType.LocalUnityPackage,
+                path = relative
+            };
+
+            AddEntry(entry);
+        }
+
+        public void HandleAddGit(string gitURL)
+        {
+            if (string.IsNullOrWhiteSpace(gitURL))
+            {
+                InternalLogger.Instance.LogWarning("Git URL is empty.");
+                return;
+            }
+
+            if (!gitURL.StartsWith("https://") && !gitURL.StartsWith("git@"))
+            {
+                InternalLogger.Instance.LogError("Invalid Git URL.");
+                return;
+            }
+
+            bool isDuplicate = Entries.Exists(entry => entry.sourceType == PackageSourceType.GitURL && entry.path == gitURL);
+
+            if (isDuplicate)
+            {
+                InternalLogger.Instance.LogWarning("This Git URL is already in the config.");
+                return;
+            }
+
+            var entry = new AssetEntry
+            {
+                sourceType = PackageSourceType.GitURL,
+                path = gitURL
+            };
+
+            AddEntry(entry);
+        }
+
+        public void HandleLocate(int index)
+        {
+            // 1) bounds‐check
+            if (index < 0 || index >= Entries.Count)
+            {
+                InternalLogger.Instance.LogError($"[AssetsConfigModel] Invalid locate index: {index}");
+                return;
+            }
+
+            // 2) pick the entry to update
+            var entry = Entries[index];
+
+            // 3) show file panel
+            string selected = EditorUtility.OpenFilePanel(
+                "Locate UnityPackage",
+                ParentPath,
+                "unitypackage"
+            );
+            if (string.IsNullOrEmpty(selected) || !selected.EndsWith(".unitypackage"))
+                return;
+
+            // 4) convert to relative
+            string relative = IOManager.GetRelativePath(ParentPath, selected);
+            if (string.IsNullOrEmpty(relative))
+            {
+                InternalLogger.Instance.LogError("[AssetsConfigModel] Failed to compute relative path");
+                return;
+            }
+
+            // 5) duplicate check (excluding this entry)
+            bool dup = Entries.Exists(e =>
+                e != entry &&
+                e.sourceType == PackageSourceType.LocalUnityPackage &&
+                e.path == relative
+            );
+            if (dup)
+            {
+                InternalLogger.Instance.LogWarning("[AssetsConfigModel] This asset is already in the config.");
+                return;
+            }
+
+            // 6) apply the update on the model
+            entry.sourceType = PackageSourceType.LocalUnityPackage;
+            entry.path = relative;
+            SaveConfig();
+
+            InternalLogger.Instance.LogDebug($"[AssetsConfigModel] Located package #{index} → {relative}");
+        }
+
+        public async Task HandleImportAsync()
+        {
+            int total = Entries.Count;
+            for (int i = 0; i < total; i++)
+            {
+                var e = Entries[i];
+                float progress = (float)i / total;
+
+                try
+                {
+                    if (e.sourceType == PackageSourceType.LocalUnityPackage && FileExists(e))
+                    {
+                        string fullPath = IOManager.CombinePaths(ParentPath, e.path);
+                        AssetDatabase.ImportPackage(fullPath, false);
+                    }
+                    else if (e.sourceType == PackageSourceType.GitURL)
+                    {
+                        await UPMClientWrapper.AddPackageAsync(e.path);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"Failed to import “{e.path}”: {ex.Message}");
+                }
+            }
+
+            AssetDatabase.Refresh();
         }
 
         private AssetsConfig config;
