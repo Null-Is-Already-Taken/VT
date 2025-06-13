@@ -1,0 +1,16 @@
+{
+    "name": "VT.Editor.GUI",
+    "rootNamespace": "VT.Editor.GUI",
+    "references": [
+        "GUID:fd2d458ef27b2db47a77a2f23bfb4432"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

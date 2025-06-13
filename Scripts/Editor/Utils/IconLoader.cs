@@ -1,7 +1,8 @@
+#if UNITY_EDITOR
 using System;
 using UnityEngine;
 
-namespace VT.EditorUtils
+namespace VT.Editor.Utils
 {
     public static class IconLoader
     {
@@ -61,3 +62,4 @@ namespace VT.EditorUtils
         }
     }
 }
+#endif

@@ -1,0 +1,16 @@
+{
+    "name": "VT.Editor.Utils",
+    "rootNamespace": "VT.Editor.Utils",
+    "references": [
+        "GUID:2e7bb7489641548f1b3f16d42319f968"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
