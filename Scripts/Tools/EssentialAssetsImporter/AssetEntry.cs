@@ -9,8 +9,6 @@ namespace VT.Tools.EssentialAssetsImporter
         GitURL
     }
 
-
-
     [Serializable]
     public class AssetEntry
     {

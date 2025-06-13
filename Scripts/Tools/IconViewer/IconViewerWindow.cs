@@ -4,7 +4,7 @@ using System;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using VT.EditorUtils;
+using VT.Editor.Utils;
 
 namespace VT.Tools.IconViewer
 {

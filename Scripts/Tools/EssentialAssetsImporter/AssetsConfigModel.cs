@@ -1,7 +1,8 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using VT.Editor.Utils;
 using VT.IO;
 using VT.Logger;
 
@@ -12,7 +13,11 @@ namespace VT.Tools.EssentialAssetsImporter
     {
         List<AssetEntry> Entries { get; }
         string ParentPath { get; }
+        string ConfigFolderPath { get; }
         AssetsConfig Config { get; }
+        IEnumerable<AssetsConfig> GetAllConfigs();
+        void SelectConfig(AssetsConfig config);
+        void ReloadCurrentConfig();
         void LoadConfig();
         void SaveConfig();
         void AddEntry(AssetEntry entry);
@@ -25,11 +30,49 @@ namespace VT.Tools.EssentialAssetsImporter
     {
         public List<AssetEntry> Entries => config.assetsEntries;
         public string ParentPath => parentPath;
+        public string ConfigFolderPath => configFolderPath;
         public AssetsConfig Config => config;
+
+        //public AssetsConfigModel()
+        //{
+        //    parentPath = PathUtils.GetAssetStoreBasePath();
+        //}
+
+        public IEnumerable<AssetsConfig> GetAllConfigs()
+        {
+            // find every AssetsConfig.asset under that folder
+            var guids = AssetDatabase.FindAssets("t:AssetsConfig", new[] { configFolderPath });
+            foreach (var g in guids)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(g);
+                yield return AssetDatabase.LoadAssetAtPath<AssetsConfig>(path);
+            }
+        }
+
+        public void SelectConfig(AssetsConfig config)
+        {
+            // directly set your private `config` instance
+            this.config = config;
+        }
+
+        /// <summary>
+        /// Loads entries from whatever config instance is already assigned to `config`.
+        /// Does NOT touch the configFolderPath or pick a new asset.
+        /// </summary>
+        public void ReloadCurrentConfig()
+        {
+            if (config == null) return;
+
+            // simply re-load the same ScriptableObject from disk, so any external edits are picked up
+            var path = AssetDatabase.GetAssetPath(config);
+            config = AssetDatabase.LoadAssetAtPath<AssetsConfig>(path);
+
+            fileExistenceCache.Clear();
+        }
 
         public void LoadConfig()
         {
-            string[] guids = AssetDatabase.FindAssets("t:AssetsConfig");
+            string[] guids = AssetDatabase.FindAssets("t:AssetsConfig", new[] { configFolderPath });
 
             if (guids.Length == 1)
             {
@@ -37,10 +80,17 @@ namespace VT.Tools.EssentialAssetsImporter
             }
             else if (guids.Length > 1)
             {
-                config = HandleMultipleConfigs(guids);
+                //config = HandleMultipleConfigs(guids);
+
+                // multiple configs found—load the first and warn
+                var path = AssetDatabase.GUIDToAssetPath(guids[0]);
+                InternalLogger.Instance.LogWarning($"[AssetsConfigModel] Multiple configs found in '{configFolderPath}'. " + $"Using '{path}'.");
+                config = LoadConfigAtGUID(guids[0]);
             }
             else
             {
+                // none found → create default in that folder
+                InternalLogger.Instance.LogDebug($"[AssetsConfigModel] No config in '{configFolderPath}', creating default.");
                 CreateDefaultConfig();
             }
 
@@ -124,40 +174,16 @@ namespace VT.Tools.EssentialAssetsImporter
             return exists;
         }
 
-        private const string configFolderPath = "Assets/EssentialAssetsImporter/Config Data";
-
         private AssetsConfig config;
-        private readonly string parentPath = Backend.GetAssetStoreBasePath();
-        private Dictionary<string, bool> fileExistenceCache = new();
+        private readonly string parentPath = PathUtils.GetAssetStoreBasePath();
+        private const string configFolderPath = "Assets/EssentialAssetsImporter/ConfigData";
+        private readonly Dictionary<string, bool> fileExistenceCache = new();
 
         private AssetsConfig LoadConfigAtGUID(string guid)
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
             InternalLogger.Instance.LogDebug("Loaded config: " + path);
             return AssetDatabase.LoadAssetAtPath<AssetsConfig>(path);
-        }
-
-        private AssetsConfig HandleMultipleConfigs(string[] guids)
-        {
-            string folder = IOManager.GetDirectoryName(AssetDatabase.GUIDToAssetPath(guids[0]));
-            string selectedPath = EditorUtility.OpenFilePanel("Select AssetsConfig", folder, "asset");
-
-            if (string.IsNullOrEmpty(selectedPath))
-            {
-                InternalLogger.Instance.LogWarning("No config selected. Load aborted.");
-                return null;
-            }
-
-            string relativePath = IOManager.GetUnityRelativePath(selectedPath);
-
-            var config = AssetDatabase.LoadAssetAtPath<AssetsConfig>(relativePath);
-
-            if (config == null)
-            {
-                InternalLogger.Instance.LogError("Failed to load selected AssetsConfig. Make sure it's a valid asset.");
-            }
-
-            return config;
         }
 
         private void CreateDefaultConfig()

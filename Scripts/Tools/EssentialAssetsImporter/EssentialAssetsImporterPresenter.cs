@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VT.IO;
@@ -7,7 +9,7 @@ using VT.Logger;
 namespace VT.Tools.EssentialAssetsImporter
 {
     // Presenters/EssentialAssetsImporterPresenter.cs
-    public class EssentialAssetsImporterPresenter
+    public class EssentialAssetsImporterPresenter : IDisposable
     {
         public EssentialAssetsImporterPresenter(IEssentialAssetsImporterView view, IAssetsConfigModel model)
         {
@@ -19,57 +21,107 @@ namespace VT.Tools.EssentialAssetsImporter
             view.OnAddGitRequested += HandleAddGit;
             view.OnLocateRequested += HandleLocate;
             view.OnRemoveRequested += HandleRemove;
-            view.OnImportAllRequested += HandleImportAll;
-            view.OnRefreshRequested += Refresh;
+            view.OnImportAllRequested += HandleImport;
+            view.OnRefreshRequested += HandleRefreshRequested;
             view.OnPageChanged += HandlePageChange;
+            view.OnSelectConfigRequested += HandleSelectConfig;
 
-            Refresh();
+            Init();   // first load init
         }
 
+        /// <summary>
+        /// Unsubscribe all view events and mark disposed.
+        /// </summary>
+        public void Dispose()
+        {
+            if (isDisposed) return;
+
+            view.OnLoadConfigRequested -= Refresh;
+            view.OnAddLocalRequested -= HandleAddLocal;
+            view.OnAddGitRequested -= HandleAddGit;
+            view.OnLocateRequested -= HandleLocate;
+            view.OnRemoveRequested -= HandleRemove;
+            view.OnImportAllRequested -= HandleImport;
+            view.OnRefreshRequested -= HandleRefreshRequested;
+            view.OnPageChanged -= HandlePageChange;
+            view.OnSelectConfigRequested -= HandleSelectConfig;
+
+            isDisposed = true;
+        }
+
+        /// <summary>
+        /// Call this from your EditorWindow.OnDisable()
+        /// </summary>
+        public void DisposeIfNeeded()
+        {
+            Dispose();
+        }
+
+        private bool hasInit = false;
         private readonly IEssentialAssetsImporterView view;
         private readonly IAssetsConfigModel model;
+        private List<AssetsConfig> configs;
+        private int currentConfigIndex;
         private int currentPage = 0;
         private int totalPages = 0;
         private const int pageSize = 3;
+        private bool isDisposed = false;
+
+        private void Init()
+        {
+            // Only the first time: scan/possibly-create the config asset(s)
+            if (!hasInit)
+            {
+                model.LoadConfig();            // create default if none
+                RefreshAllConfigs();           // populate configs[] and select first
+                hasInit = true;
+            }
+
+            // Always do a normal refresh of the *current* config’s entries
+            Refresh();
+        }
+
+        private void RefreshAllConfigs()
+        {
+            configs = model
+                .GetAllConfigs()
+                .ToList();
+
+            // auto-select first if nothing selected
+            currentConfigIndex = Mathf.Clamp(currentConfigIndex, 0, configs.Count - 1);
+            if (configs.Count > 0)
+                model.SelectConfig(configs[currentConfigIndex]);
+
+            view.UpdateConfigList(configs);
+            view.UpdateConfigPageInfo(currentConfigIndex, configs.Count);
+        }
 
         private void Refresh()
         {
             InternalLogger.Instance.LogDebug("[Presenter] ▶ Refresh() called");
 
-            // 1) Load config
-            InternalLogger.Instance.LogDebug("[Presenter] └─ Loading config...");
-            model.LoadConfig();
+            // 1) Reload only the *current* config’s entries
+            model.ReloadCurrentConfig();
 
-            // tell the view which ScriptableObject was loaded
+            // 2) Push the selected asset into the view header
             view.UpdateConfigAsset(model.Config);
 
-            // 2) Grab all entries
+            // 3) Build & page‐slice view‐models exactly like before
             var all = model.Entries;
-            InternalLogger.Instance.LogDebug($"[Presenter] └─ Total entries loaded: {all.Count}");
-
-            // 3) Recompute pagination
             totalPages = Mathf.CeilToInt(all.Count / (float)pageSize);
             currentPage = Mathf.Clamp(currentPage, 0, Mathf.Max(0, totalPages - 1));
-            InternalLogger.Instance.LogDebug($"[Presenter] └─ Pagination → pageSize={pageSize}, totalPages={totalPages}, currentPage={currentPage}");
 
-            // 4) Build view‐models for the current page, logging each existence check
             var vms = all
-                .Skip(currentPage * pageSize)
-                .Take(pageSize)
-                .Select(e =>
-                {
-                    bool exists = model.FileExists(e);
-                    InternalLogger.Instance.LogDebug($"[Presenter]    • Entry '{e}' exists on disk? {exists}");
-                    return new AssetEntryViewModel
-                    {
-                        Entry = e,
-                        Exists = exists
-                    };
-                })
-                .ToList();
+              .Skip(currentPage * pageSize)
+              .Take(pageSize)
+              .Select(e => new AssetEntryViewModel
+              {
+                  Entry = e,
+                  Exists = model.FileExists(e)
+              })
+              .ToList();
 
-            // 5) Push to the view
-            InternalLogger.Instance.LogDebug($"[Presenter] └─ Displaying {vms.Count} entries in view");
+            // 4) Render
             view.UpdateEntriesViewModels(vms);
             view.UpdatePageInfo(currentPage, totalPages);
 
@@ -109,7 +161,7 @@ namespace VT.Tools.EssentialAssetsImporter
             var all = model.Entries;
             if (index < 0 || index >= all.Count)
             {
-                Debug.LogError($"[Presenter] Invalid locate index: {index}");
+                InternalLogger.Instance.LogError($"[Presenter] Invalid locate index: {index}");
                 return;
             }
 
@@ -129,7 +181,7 @@ namespace VT.Tools.EssentialAssetsImporter
             string relative = IOManager.GetRelativePath(model.ParentPath, selected);
             if (string.IsNullOrEmpty(relative))
             {
-                Debug.LogError("[Presenter] Failed to compute relative path");
+                InternalLogger.Instance.LogError("[Presenter] Failed to compute relative path");
                 return;
             }
 
@@ -141,7 +193,7 @@ namespace VT.Tools.EssentialAssetsImporter
             );
             if (dup)
             {
-                Debug.LogWarning("[Presenter] This asset is already in the config.");
+                InternalLogger.Instance.LogWarning("[Presenter] This asset is already in the config.");
                 return;
             }
 
@@ -163,7 +215,7 @@ namespace VT.Tools.EssentialAssetsImporter
             Refresh();
         }
 
-        private void HandleImportAll()
+        private void HandleImport()
         {
             foreach (var e in model.Entries)
             {
@@ -184,6 +236,22 @@ namespace VT.Tools.EssentialAssetsImporter
         private void HandlePageChange(int page)
         {
             currentPage = page;
+            Refresh();
+        }
+
+        private void HandleSelectConfig(int newIndex)
+        {
+            if (newIndex < 0 || newIndex >= configs.Count) return;
+            currentConfigIndex = newIndex;
+            model.SelectConfig(configs[newIndex]);
+            view.UpdateConfigPageInfo(currentConfigIndex, configs.Count);
+            Refresh();
+        }
+
+        private void HandleRefreshRequested()
+        {
+            // if you have a “Refresh” button, it should only reload entries
+            RefreshAllConfigs();
             Refresh();
         }
     }
