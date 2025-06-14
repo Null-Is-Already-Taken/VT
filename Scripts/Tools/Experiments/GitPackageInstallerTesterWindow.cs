@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
-using VT.Tools.EssentialAssetsImporter;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
@@ -13,7 +12,7 @@ namespace VT.Tools.EssentialAssetsImporter
         private string url = "https://github.com/Cysharp/ZLinq.git?path=/src/ZLinq.Unity/Assets/ZLinq.Unity#main";
         private string status = "Idle";
 
-        [MenuItem("Tools/Git Package Installer Tester")]
+        [MenuItem("Tools/VT/Experiments/Git Package Installer Tester")]
         public static void ShowWindow()
         {
             GetWindow<GitPackageInstallerTesterWindow>("Package Installer Tester");

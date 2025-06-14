@@ -3,12 +3,11 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using UnityEngine;
 using UnityEngine.Networking;
 using VT.IO;
 using VT.Logger;
 
-namespace VT.Tools.EssentialAssetsImporter
+namespace VT.Tools.Experiments
 {
     public static class UnityPackageDownloader
     {

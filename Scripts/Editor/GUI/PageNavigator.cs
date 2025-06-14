@@ -15,7 +15,7 @@ namespace VT.Editor.GUI
                 (
                     content: new GUIContent("←"),
                     backgroundColor: Color.white,
-                    onClick: () => onPageChanged?.Invoke(currentIndex + 1),
+                    onClick: () => onPageChanged?.Invoke(currentIndex - 1),
                     style: ButtonStyles.Inline
                 );
 

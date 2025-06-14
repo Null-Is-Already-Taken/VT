@@ -10,29 +10,7 @@ using VT.Logger;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
-    // Models/IAssetsConfigModel.cs
-    //public interface IAssetsConfigModel
-    //{
-    //    List<AssetEntry> Entries { get; }
-    //    string ParentPath { get; }
-    //    string ConfigFolderPath { get; }
-    //    AssetsConfig Config { get; }
-    //    IEnumerable<AssetsConfig> GetAllConfigs();
-    //    void SelectConfig(AssetsConfig config);
-    //    void ReloadCurrentConfig();
-    //    void LoadConfig();
-    //    void SaveConfig();
-    //    void AddEntry(AssetEntry entry);
-    //    void RemoveEntry(AssetEntry entry);
-    //    bool FileExists(AssetEntry entry);
-    //    void HandleAddLocal();
-    //    void HandleAddGit(string gitURL);
-    //    void HandleLocate(int index);
-    //    void HandleImport();
-    //}
-
-    // Models/AssetsConfigModel.cs
-    public class AssetsConfigModel //: IAssetsConfigModel
+    public class EssentialAssetsImporterModel
     {
         public List<AssetEntry> Entries => config.assetsEntries;
         public string ParentPath => parentPath;
@@ -85,13 +63,13 @@ namespace VT.Tools.EssentialAssetsImporter
 
                 // multiple configs found—load the first and warn
                 var path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                InternalLogger.Instance.LogWarning($"[AssetsConfigModel] Multiple configs found in '{configFolderPath}'. " + $"Using '{path}'.");
+                InternalLogger.Instance.LogWarning($"[Model] Multiple configs found in '{configFolderPath}'. " + $"Using '{path}'.");
                 config = LoadConfigAtGUID(guids[0]);
             }
             else
             {
                 // none found → create default in that folder
-                InternalLogger.Instance.LogDebug($"[AssetsConfigModel] No config in '{configFolderPath}', creating default.");
+                InternalLogger.Instance.LogDebug($"[Model] No config in '{configFolderPath}', creating default.");
                 CreateDefaultConfig();
             }
 
@@ -110,41 +88,41 @@ namespace VT.Tools.EssentialAssetsImporter
 
         public void AddEntry(AssetEntry entry)
         {
-            InternalLogger.Instance.LogDebug($"[AssetsConfigModel] AddEntry called with: {entry}");
+            InternalLogger.Instance.LogDebug($"[Model] AddEntry called with: {entry}");
 
             if (entry == null)
             {
-                InternalLogger.Instance.LogError("[AssetsConfigModel] AddEntry: entry is null!");
+                InternalLogger.Instance.LogError("[Model] AddEntry: entry is null!");
                 return;
             }
 
             if (config == null)
             {
-                InternalLogger.Instance.LogDebug("[AssetsConfigModel] config is null, calling LoadConfig()");
+                InternalLogger.Instance.LogDebug("[Model] config is null, calling LoadConfig()");
                 LoadConfig();
             }
 
             if (config.assetsEntries == null)
             {
-                InternalLogger.Instance.LogDebug("[AssetsConfigModel] assetsEntries was null, initializing list");
+                InternalLogger.Instance.LogDebug("[Model] assetsEntries was null, initializing list");
                 config.assetsEntries = new List<AssetEntry>();
             }
 
             bool exists = config.assetsEntries.Exists(e =>
                 e.sourceType == entry.sourceType &&
                 e.path == entry.path);
-            InternalLogger.Instance.LogDebug($"[AssetsConfigModel] Entry exists? {exists}");
+            InternalLogger.Instance.LogDebug($"[Model] Entry exists? {exists}");
 
             if (!exists)
             {
                 config.assetsEntries.Add(entry);
-                InternalLogger.Instance.LogDebug($"[AssetsConfigModel] Added entry: {entry}");
+                InternalLogger.Instance.LogDebug($"[Model] Added entry: {entry}");
                 SaveConfig();
-                InternalLogger.Instance.LogDebug($"[AssetsConfigModel] SaveConfig complete, total entries now: {config.assetsEntries.Count}");
+                InternalLogger.Instance.LogDebug($"[Model] SaveConfig complete, total entries now: {config.assetsEntries.Count}");
             }
             else
             {
-                InternalLogger.Instance.LogWarning($"[AssetsConfigModel] Skipping AddEntry because it already exists: {entry}");
+                InternalLogger.Instance.LogWarning($"[Model] Skipping AddEntry because it already exists: {entry}");
             }
         }
 
@@ -160,7 +138,7 @@ namespace VT.Tools.EssentialAssetsImporter
             }
             else
             {
-                InternalLogger.Instance.LogDebug($"[AssetsConfigModel] Tried to remove non-existent entry: {entry}");
+                InternalLogger.Instance.LogDebug($"[Model] Tried to remove non-existent entry: {entry}");
             }
         }
 
@@ -240,7 +218,7 @@ namespace VT.Tools.EssentialAssetsImporter
             // 1) bounds‐check
             if (index < 0 || index >= Entries.Count)
             {
-                InternalLogger.Instance.LogError($"[AssetsConfigModel] Invalid locate index: {index}");
+                InternalLogger.Instance.LogError($"[Model] Invalid locate index: {index}");
                 return;
             }
 
@@ -260,7 +238,7 @@ namespace VT.Tools.EssentialAssetsImporter
             string relative = IOManager.GetRelativePath(ParentPath, selected);
             if (string.IsNullOrEmpty(relative))
             {
-                InternalLogger.Instance.LogError("[AssetsConfigModel] Failed to compute relative path");
+                InternalLogger.Instance.LogError("[Model] Failed to compute relative path");
                 return;
             }
 
@@ -272,7 +250,7 @@ namespace VT.Tools.EssentialAssetsImporter
             );
             if (dup)
             {
-                InternalLogger.Instance.LogWarning("[AssetsConfigModel] This asset is already in the config.");
+                InternalLogger.Instance.LogWarning("[Model] This asset is already in the config.");
                 return;
             }
 
@@ -281,7 +259,7 @@ namespace VT.Tools.EssentialAssetsImporter
             entry.path = relative;
             SaveConfig();
 
-            InternalLogger.Instance.LogDebug($"[AssetsConfigModel] Located package #{index} → {relative}");
+            InternalLogger.Instance.LogDebug($"[Model] Located package #{index} → {relative}");
         }
 
         public async Task HandleImportAsync()

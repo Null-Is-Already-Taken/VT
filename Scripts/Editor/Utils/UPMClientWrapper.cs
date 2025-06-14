@@ -6,7 +6,7 @@ using UnityEditor;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
 
-namespace VT.Tools.EssentialAssetsImporter
+namespace VT.Editor.Utils
 {
     public static class UPMClientWrapper
     {

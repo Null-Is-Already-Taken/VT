@@ -3,16 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using VT.IO;
 using VT.Logger;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
-    // Presenters/EssentialAssetsImporterPresenter.cs
     public class EssentialAssetsImporterPresenter : IDisposable
     {
-        //public EssentialAssetsImporterPresenter(IEssentialAssetsImporterView view, IAssetsConfigModel model)
-        public EssentialAssetsImporterPresenter(EssentialAssetsImporterWindow view, AssetsConfigModel model)
+        public EssentialAssetsImporterPresenter(EssentialAssetsImporterView view, EssentialAssetsImporterModel model)
         {
             this.view = view;
             this.model = model;
@@ -59,15 +56,13 @@ namespace VT.Tools.EssentialAssetsImporter
         }
 
         private bool hasInit = false;
-        //private readonly IEssentialAssetsImporterView view;
-        //private readonly IAssetsConfigModel model;
-        private readonly EssentialAssetsImporterWindow view;
-        private readonly AssetsConfigModel model;
+        private readonly EssentialAssetsImporterView view;
+        private readonly EssentialAssetsImporterModel model;
         private List<AssetsConfig> configs;
         private int currentConfigIndex;
         private int currentPage = 0;
         private int totalPages = 0;
-        private const int pageSize = 3;
+        private const int pageSize = 5;
         private bool isDisposed = false;
 
         private void Init()
@@ -121,7 +116,7 @@ namespace VT.Tools.EssentialAssetsImporter
         private List<AssetEntryViewModel> BuildEntryViewModels()
         {
             var all = model.Entries;
-            totalPages = Mathf.CeilToInt(all.Count / (float)pageSize);
+            totalPages = Mathf.CeilToInt(all.Count / (float)view.ItemPerPage);
             currentPage = Mathf.Clamp(currentPage, 0, Mathf.Max(0, totalPages - 1));
 
             var vms = all
@@ -184,7 +179,6 @@ namespace VT.Tools.EssentialAssetsImporter
 
         private void HandleRefreshRequested()
         {
-            // if you have a “Refresh” button, it should only reload entries
             RefreshAllConfigs();
             Refresh();
         }

@@ -14,29 +14,10 @@ namespace VT.Tools.EssentialAssetsImporter
         public bool Exists { get; set; }
     }
 
-    //public interface IEssentialAssetsImporterView
-    //{
-    //    event Action OnLoadConfigRequested;
-    //    event Action<int> OnLocateRequested;
-    //    event Action<int> OnRemoveRequested;
-    //    event Action OnAddLocalRequested;
-    //    event Action<string> OnAddGitRequested;
-    //    event Action OnImportAllRequested;
-    //    event Action OnRefreshRequested;
-    //    event Action<int> OnPageChanged;
-    //    event Action<int> OnSelectConfigRequested;
-
-    //    void UpdateConfigList(List<AssetsConfig> configList);
-    //    void UpdateConfigPageInfo(int selectedIndex, int totalConfigs);
-    //    void UpdateConfigAsset(AssetsConfig config);
-    //    void UpdateEntriesViewModels(List<AssetEntryViewModel> entries);
-    //    void UpdatePageInfo(int currentPage, int totalPages);
-    //}
-
-    public class EssentialAssetsImporterWindow : EditorWindow//, IEssentialAssetsImporterView
+    public class EssentialAssetsImporterView : EditorWindow
     {
         // Serialize so they survive domain reload
-        [SerializeField] private AssetsConfigModel model;
+        [SerializeField] private EssentialAssetsImporterModel model;
         [SerializeField] private EssentialAssetsImporterPresenter presenter;
 
         // Implement view interface events
@@ -49,6 +30,8 @@ namespace VT.Tools.EssentialAssetsImporter
         public event Action OnRefreshRequested;
         public event Action<int> OnPageChanged;
         public event Action<int> OnSelectConfigRequested;
+
+        public float ItemPerPage => itemsPerPage;
 
         public void UpdateConfigList(List<AssetsConfig> configList)
         {
@@ -78,11 +61,11 @@ namespace VT.Tools.EssentialAssetsImporter
             this.totalPages = totalPages;
         }
 
-        [MenuItem("Tools/Essential Assets Importer")]
+        [MenuItem("Tools/VT/Essential Assets Importer")]
         public static void OpenWindow()
         {
             // This just shows the window; wiring happens in OnEnable
-            GetWindow<EssentialAssetsImporterWindow>("Essential Assets Importer").Show();
+            GetWindow<EssentialAssetsImporterView>("Essential Assets Importer").Show();
         }
 
         // list of available config profiles
@@ -123,7 +106,7 @@ namespace VT.Tools.EssentialAssetsImporter
 
         private void OnEnable()
         {
-            model ??= new AssetsConfigModel();
+            model ??= new EssentialAssetsImporterModel();
 
             // Always re-create the presenter and hook its handlers to your view
             presenter ??= new EssentialAssetsImporterPresenter(this, model);
