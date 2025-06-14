@@ -1,6 +1,7 @@
 ﻿#if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
@@ -10,48 +11,90 @@ using VT.Logger;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
+    /// <summary>
+    /// Encapsulates all data operations for the Essential Assets Importer,
+    /// including config loading, entry management, and file-existence caching.
+    /// </summary>
     public class EssentialAssetsImporterModel
     {
-        public List<AssetEntry> Entries => config.assetsEntries;
-        public string ParentPath => parentPath;
-        public string ConfigFolderPath => configFolderPath;
-        public AssetsConfig Config => config;
+        //--- Public Properties ---//
 
+        /// <summary>Currently loaded asset entries.</summary>
+        public List<AssetEntry> Entries => Config.assetsEntries;
+
+        /// <summary>Base path for local asset store packages.</summary>
+        public string ParentPath => parentPath;
+
+        /// <summary>Folder where AssetsConfig assets are stored.</summary>
+        public string ConfigFolderPath => configFolderPath;
+
+        /// <summary>Currently selected AssetsConfig ScriptableObject.</summary>
+        public AssetsConfig Config
+        {
+            get
+            {
+                if (config == null)
+                {
+                    LoadConfig();
+                }
+                return config;
+            }
+        }
+
+        //--- Constructor ---//
+
+        /// <summary>
+        /// Constructs the model and initializes the config folder.
+        /// </summary>
+        public EssentialAssetsImporterModel()
+        {
+            parentPath = PathUtils.GetAssetStoreBasePath();
+            fileExistenceCache = new();
+
+            // Ensure the config folder exists
+            if (!IOManager.AssetDirectoryExists(configFolderPath))
+            {
+                IOManager.CreateAssetDirectoryRecursive(configFolderPath);
+            }
+        }
+
+        //--- Config Enumeration ---//
+
+        /// <summary>
+        /// Enumerates all AssetsConfig assets under the config folder.
+        /// </summary>
         public IEnumerable<AssetsConfig> GetAllConfigs()
         {
-            // find every AssetsConfig.asset under that folder
-            var guids = AssetDatabase.FindAssets("t:AssetsConfig", new[] { configFolderPath });
+            var guids = AssetDatabase.FindAssets(
+                $"t:{nameof(AssetsConfig)}",
+                new[] { configFolderPath }
+            );
             foreach (var g in guids)
             {
-                var path = AssetDatabase.GUIDToAssetPath(g);
+                string path = AssetDatabase.GUIDToAssetPath(g);
                 yield return AssetDatabase.LoadAssetAtPath<AssetsConfig>(path);
             }
         }
 
+        /// <summary>
+        /// Selects the given AssetsConfig as the active config.
+        /// </summary>
         public void SelectConfig(AssetsConfig config)
         {
-            // directly set your private `config` instance
             this.config = config;
         }
 
+        //--- Config Loading & Saving ---//
+
         /// <summary>
-        /// Loads entries from whatever config instance is already assigned to `config`.
-        /// Does NOT touch the configFolderPath or pick a new asset.
+        /// Loads the active config from disk, or creates a default if none exist.
         /// </summary>
-        public void ReloadCurrentConfig()
-        {
-            if (config == null) return;
-
-            // simply re-load the same ScriptableObject from disk, so any external edits are picked up
-            var path = AssetDatabase.GetAssetPath(config);
-            config = AssetDatabase.LoadAssetAtPath<AssetsConfig>(path);
-
-            fileExistenceCache.Clear();
-        }
-
         public void LoadConfig()
         {
-            string[] guids = AssetDatabase.FindAssets("t:AssetsConfig", new[] { configFolderPath });
+            string[] guids = AssetDatabase.FindAssets(
+                $"t:{nameof(AssetsConfig)}",
+                new[] { configFolderPath }
+            );
 
             if (guids.Length == 1)
             {
@@ -59,148 +102,162 @@ namespace VT.Tools.EssentialAssetsImporter
             }
             else if (guids.Length > 1)
             {
-                //config = HandleMultipleConfigs(guids);
-
-                // multiple configs found—load the first and warn
-                var path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                InternalLogger.Instance.LogWarning($"[Model] Multiple configs found in '{configFolderPath}'. " + $"Using '{path}'.");
+                string firstPath = AssetDatabase.GUIDToAssetPath(guids[0]);
+                InternalLogger.Instance.LogWarning(
+                    $"[Model] Multiple configs in '{configFolderPath}'. Using '{firstPath}'."
+                );
                 config = LoadConfigAtGUID(guids[0]);
             }
             else
             {
-                // none found → create default in that folder
-                InternalLogger.Instance.LogDebug($"[Model] No config in '{configFolderPath}', creating default.");
+                InternalLogger.Instance.LogDebug(
+                    $"[Model] No config found. Creating default in '{configFolderPath}'."
+                );
                 CreateDefaultConfig();
             }
 
-            // reset cache so that the UI will re-poll existence
             fileExistenceCache.Clear();
         }
 
+        /// <summary>
+        /// Saves the currently active config asset.
+        /// </summary>
         public void SaveConfig()
         {
-            if (config == null) return;
+            if (config == null)
+                return;
 
             EditorUtility.SetDirty(config);
             AssetDatabase.SaveAssets();
             fileExistenceCache.Clear();
         }
 
+        /// <summary>
+        /// Reloads the entries of the currently selected config from disk.
+        /// </summary>
+        public void ReloadCurrentConfig()
+        {
+            if (config == null)
+                return;
+
+            string path = AssetDatabase.GetAssetPath(config);
+            config = AssetDatabase.LoadAssetAtPath<AssetsConfig>(path);
+            fileExistenceCache.Clear();
+        }
+
+        //--- Entry Management ---//
+
+        /// <summary>
+        /// Adds a new entry if it doesn't already exist, then saves config.
+        /// </summary>
         public void AddEntry(AssetEntry entry)
         {
-            InternalLogger.Instance.LogDebug($"[Model] AddEntry called with: {entry}");
-
+            InternalLogger.Instance.LogDebug($"[Model] AddEntry: {entry}");
             if (entry == null)
             {
-                InternalLogger.Instance.LogError("[Model] AddEntry: entry is null!");
+                InternalLogger.Instance.LogError("[Model] Cannot add null entry.");
                 return;
             }
 
             if (config == null)
-            {
-                InternalLogger.Instance.LogDebug("[Model] config is null, calling LoadConfig()");
                 LoadConfig();
-            }
 
-            if (config.assetsEntries == null)
-            {
-                InternalLogger.Instance.LogDebug("[Model] assetsEntries was null, initializing list");
-                config.assetsEntries = new List<AssetEntry>();
-            }
+            config.assetsEntries ??= new List<AssetEntry>();
 
-            bool exists = config.assetsEntries.Exists(e =>
-                e.sourceType == entry.sourceType &&
-                e.path == entry.path);
-            InternalLogger.Instance.LogDebug($"[Model] Entry exists? {exists}");
+            bool exists = config.assetsEntries.Any(e =>
+                e.sourceType == entry.sourceType && e.path == entry.path
+            );
 
             if (!exists)
             {
                 config.assetsEntries.Add(entry);
-                InternalLogger.Instance.LogDebug($"[Model] Added entry: {entry}");
+                InternalLogger.Instance.LogDebug($"[Model] Entry added. Total now: {config.assetsEntries.Count}");
                 SaveConfig();
-                InternalLogger.Instance.LogDebug($"[Model] SaveConfig complete, total entries now: {config.assetsEntries.Count}");
             }
             else
             {
-                InternalLogger.Instance.LogWarning($"[Model] Skipping AddEntry because it already exists: {entry}");
+                InternalLogger.Instance.LogWarning($"[Model] Duplicate entry skipped: {entry}");
             }
         }
 
+        /// <summary>
+        /// Removes the given entry if present, then saves config.
+        /// </summary>
         public void RemoveEntry(AssetEntry entry)
         {
-            // Remove logic
-            if (config == null || config.assetsEntries == null) return;
+            if (config?.assetsEntries == null)
+                return;
 
-            bool removed = config.assetsEntries.Remove(entry);
-            if (removed)
-            {
+            if (config.assetsEntries.Remove(entry))
                 SaveConfig();
-            }
             else
-            {
-                InternalLogger.Instance.LogDebug($"[Model] Tried to remove non-existent entry: {entry}");
-            }
+                InternalLogger.Instance.LogDebug($"[Model] Attempted remove of missing entry: {entry}");
         }
 
+        //--- File Existence Caching ---//
+
+        /// <summary>
+        /// Returns true if the entry is a Git URL or the local file exists (with caching).
+        /// </summary>
         public bool FileExists(AssetEntry entry)
         {
-            if (entry.sourceType == PackageSourceType.GitURL) return true; // Git URLs are always considered "exists" since they are not local files
+            if (entry.sourceType == PackageSourceType.GitURL)
+                return true;
 
-            var full = IOManager.CombinePaths(parentPath, entry.path);
-            if (!fileExistenceCache.TryGetValue(full, out var exists))
+            string full = IOManager.CombinePaths(ParentPath, entry.path);
+            if (!fileExistenceCache.TryGetValue(full, out bool exists))
             {
                 exists = IOManager.FileExists(full);
                 fileExistenceCache[full] = exists;
             }
+
             return exists;
         }
 
+        //--- UI Handlers ---//
+
+        /// <summary>
+        /// Opens a file panel to add a local .unitypackage entry.
+        /// </summary>
         public void HandleAddLocal()
         {
-            // open a file dialog to get file path
             string absolute = EditorUtility.OpenFilePanel(
                 "Select UnityPackage",
                 ParentPath,
                 "unitypackage"
             );
-
-            if (string.IsNullOrEmpty(absolute)) return;
+            if (string.IsNullOrEmpty(absolute))
+                return;
 
             string relative = IOManager.GetRelativePath(ParentPath, absolute);
-
-            if (string.IsNullOrEmpty(relative) || !relative.EndsWith(".unitypackage"))
-            {
+            if (string.IsNullOrEmpty(relative))
                 return;
-            }
 
             var entry = new AssetEntry
             {
                 sourceType = PackageSourceType.LocalUnityPackage,
                 path = relative
             };
-
             AddEntry(entry);
         }
 
+        /// <summary>
+        /// Validates and adds a Git URL entry.
+        /// </summary>
         public void HandleAddGit(string gitURL)
         {
             if (string.IsNullOrWhiteSpace(gitURL))
-            {
-                InternalLogger.Instance.LogWarning("Git URL is empty.");
                 return;
-            }
 
             if (!gitURL.StartsWith("https://") && !gitURL.StartsWith("git@"))
             {
-                InternalLogger.Instance.LogError("Invalid Git URL.");
+                InternalLogger.Instance.LogError("[Model] Invalid Git URL.");
                 return;
             }
 
-            bool isDuplicate = Entries.Exists(entry => entry.sourceType == PackageSourceType.GitURL && entry.path == gitURL);
-
-            if (isDuplicate)
+            if (Entries.Any(e => e.sourceType == PackageSourceType.GitURL && e.path == gitURL))
             {
-                InternalLogger.Instance.LogWarning("This Git URL is already in the config.");
+                InternalLogger.Instance.LogWarning("[Model] Duplicate Git URL.");
                 return;
             }
 
@@ -209,59 +266,44 @@ namespace VT.Tools.EssentialAssetsImporter
                 sourceType = PackageSourceType.GitURL,
                 path = gitURL
             };
-
             AddEntry(entry);
         }
 
+        /// <summary>
+        /// Opens a file panel to locate and update a missing local entry.
+        /// </summary>
         public void HandleLocate(int index)
         {
-            // 1) bounds‐check
             if (index < 0 || index >= Entries.Count)
-            {
-                InternalLogger.Instance.LogError($"[Model] Invalid locate index: {index}");
                 return;
-            }
 
-            // 2) pick the entry to update
             var entry = Entries[index];
-
-            // 3) show file panel
             string selected = EditorUtility.OpenFilePanel(
                 "Locate UnityPackage",
                 ParentPath,
                 "unitypackage"
             );
-            if (string.IsNullOrEmpty(selected) || !selected.EndsWith(".unitypackage"))
+            if (string.IsNullOrEmpty(selected))
                 return;
 
-            // 4) convert to relative
             string relative = IOManager.GetRelativePath(ParentPath, selected);
             if (string.IsNullOrEmpty(relative))
-            {
-                InternalLogger.Instance.LogError("[Model] Failed to compute relative path");
                 return;
-            }
 
-            // 5) duplicate check (excluding this entry)
-            bool dup = Entries.Exists(e =>
-                e != entry &&
-                e.sourceType == PackageSourceType.LocalUnityPackage &&
-                e.path == relative
+            bool duplicate = Entries.Any(e =>
+                e != entry && e.sourceType == PackageSourceType.LocalUnityPackage && e.path == relative
             );
-            if (dup)
-            {
-                InternalLogger.Instance.LogWarning("[Model] This asset is already in the config.");
+            if (duplicate)
                 return;
-            }
 
-            // 6) apply the update on the model
             entry.sourceType = PackageSourceType.LocalUnityPackage;
             entry.path = relative;
             SaveConfig();
-
-            InternalLogger.Instance.LogDebug($"[Model] Located package #{index} → {relative}");
         }
 
+        /// <summary>
+        /// Asynchronously imports all entries: local .unitypackages or Git URLs via UPM.
+        /// </summary>
         public async Task HandleImportAsync()
         {
             int total = Entries.Count;
@@ -269,7 +311,6 @@ namespace VT.Tools.EssentialAssetsImporter
             {
                 var e = Entries[i];
                 float progress = (float)i / total;
-
                 try
                 {
                     if (e.sourceType == PackageSourceType.LocalUnityPackage && FileExists(e))
@@ -284,43 +325,45 @@ namespace VT.Tools.EssentialAssetsImporter
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"Failed to import “{e.path}”: {ex.Message}");
+                    Debug.LogError($"[Model] Import failed for '{e.path}': {ex.Message}");
                 }
             }
-
             AssetDatabase.Refresh();
         }
 
-        private AssetsConfig config;
-        private readonly string parentPath = PathUtils.GetAssetStoreBasePath();
-        private const string configFolderPath = "Assets/EssentialAssetsImporter/ConfigData";
-        private readonly Dictionary<string, bool> fileExistenceCache = new();
+        //--- Private Fields ---//
 
+        private AssetsConfig config;
+        private readonly string parentPath;
+        private const string configFolderPath = "Assets/EssentialAssetsImporter/ConfigData";
+        private readonly Dictionary<string, bool> fileExistenceCache;
+
+        //--- Private Helpers ---//
+
+        /// <summary>
+        /// Loads an AssetsConfig from a GUID string.
+        /// </summary>
         private AssetsConfig LoadConfigAtGUID(string guid)
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
-            InternalLogger.Instance.LogDebug("Loaded config: " + path);
+            InternalLogger.Instance.LogDebug($"[Model] Loaded config at: {path}");
             return AssetDatabase.LoadAssetAtPath<AssetsConfig>(path);
         }
 
+        /// <summary>
+        /// Creates a default AssetsConfig asset in the config folder.
+        /// </summary>
         private void CreateDefaultConfig()
         {
             if (!IOManager.AssetDirectoryExists(configFolderPath))
-            {
                 IOManager.CreateAssetDirectoryRecursive(configFolderPath);
-            }
 
-            if (IOManager.AssetDirectoryExists(configFolderPath))
-            {
-                var assetPath = IOManager.CombinePaths(configFolderPath, "DefaultAssetsConfig.asset");
-                config = ScriptableObject.CreateInstance<AssetsConfig>();
-                AssetDatabase.CreateAsset(config, assetPath);
-                AssetDatabase.SaveAssets();
-
-                EditorGUIUtility.PingObject(config);
-
-                InternalLogger.Instance.LogDebug("Created new AssetsConfig at: " + assetPath);
-            }
+            string assetPath = IOManager.CombinePaths(configFolderPath, "DefaultAssetsConfig.asset");
+            config = ScriptableObject.CreateInstance<AssetsConfig>();
+            AssetDatabase.CreateAsset(config, assetPath);
+            AssetDatabase.SaveAssets();
+            EditorGUIUtility.PingObject(config);
+            InternalLogger.Instance.LogDebug($"[Model] Created new config at: {assetPath}");
         }
     }
 }

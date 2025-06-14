@@ -86,7 +86,7 @@ namespace VT.Editor.GUI
         /// <param name="availableWidth">The pixel width available for this label.</param>
         /// <param name="averageCharWidth">Your average char‐width used for estimating truncation.</param>
         /// <param name="exists">If false, text is drawn red; otherwise white.</param>
-        public static void DrawTruncatedLabel(string fullText, string tooltip, float availableWidth, float averageCharWidth, bool exists)
+        public static void DrawTruncatedLabel(string fullText, Color textColor, string tooltip, float availableWidth, float averageCharWidth)
         {
             // 1) estimate how many chars will fit, then truncate
             int maxChars = Utils.TextUtils.EstimateMaxChars(availableWidth, averageCharWidth);
@@ -96,7 +96,7 @@ namespace VT.Editor.GUI
             var content = new GUIContent(truncated, tooltip);
             var style = LabelStyles.Label;
             style.fixedWidth = availableWidth;
-            style.normal.textColor = exists ? Color.white : Color.red;
+            style.normal.textColor = textColor;
 
             // 3) render
             Draw(content, style);

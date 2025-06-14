@@ -14,13 +14,18 @@ namespace VT.Tools.EssentialAssetsImporter
         public bool Exists { get; set; }
     }
 
+    /// <summary>
+    /// Editor window for importing and managing essential asset packages.
+    /// </summary>
     public class EssentialAssetsImporterView : EditorWindow
     {
-        // Serialize so they survive domain reload
+        //--- Serialized Fields ---//
+
         [SerializeField] private EssentialAssetsImporterModel model;
         [SerializeField] private EssentialAssetsImporterPresenter presenter;
 
-        // Implement view interface events
+        //--- View Events ---//
+
         public event Action OnLoadConfigRequested;
         public event Action<int> OnLocateRequested;
         public event Action<int> OnRemoveRequested;
@@ -31,7 +36,38 @@ namespace VT.Tools.EssentialAssetsImporter
         public event Action<int> OnPageChanged;
         public event Action<int> OnSelectConfigRequested;
 
+        //--- State ---//
+
+        private List<AssetsConfig> configList;
+        private int currentConfigIndex;
+        private AssetsConfig config;
+
+        private List<AssetEntryViewModel> currentEntries;
+        private int currentPage;
+        private int totalPages;
+
+        private Vector2 scrollPos;
+        private bool addingGitUrl;
+        private string newGitUrl = string.Empty;
+
+        //--- Constants ---//
+
+        private const int itemsPerPage = 5;
         public float ItemPerPage => itemsPerPage;
+
+        private const float padding = 3f;
+        private const float spacing = 10f;
+        private const float averageCharWidth = 6f;
+        private const float buttonSize = 24f;
+
+        // Unicode icons
+        private const string removeButtonIcon = EmbeddedIcons.Wastebasket_Unicode;
+        private const string addLocalButtonIcon = EmbeddedIcons.Package_Unicode;
+        private const string addGlobalButtonIcon = EmbeddedIcons.Internet_Unicode;
+        private const string locateButtonIcon = EmbeddedIcons.MagnifyingGlass_Unicode;
+
+        private double lastAutoRefreshTime;
+        private const double autoRefreshInterval = 15.0;
 
         public void UpdateConfigList(List<AssetsConfig> configList)
         {
@@ -61,182 +97,159 @@ namespace VT.Tools.EssentialAssetsImporter
             this.totalPages = totalPages;
         }
 
+        //--- Menu ---//
+
         [MenuItem("Tools/VT/Essential Assets Importer")]
         public static void OpenWindow()
         {
-            // This just shows the window; wiring happens in OnEnable
             GetWindow<EssentialAssetsImporterView>("Essential Assets Importer").Show();
         }
-
-        // list of available config profiles
-        private List<AssetsConfig> configList;
-
-        // index of the currently selected config profile
-        private int currentConfigIndex = 0;
-
-        // backing store for the currently displayed entries
-        private List<AssetEntryViewModel> currentEntries;
-
-        // pagination state
-        private int currentPage = 0;
-        private int totalPages = 0;
-        private const int itemsPerPage = 5;
-
-        // layout constants
-        private const float padding = 3f;
-        private const float spacing = 10f;
-        private const float averageCharWidth = 6f;
-        private const float buttonSize = 24f;
-
-        // icon keys
-        private const string removeButtonIcon = EmbeddedIcons.Wastebasket_Unicode;
-        private const string addLocalButtonIcon = EmbeddedIcons.Package_Unicode;
-        private const string addGlobalButtonIcon = EmbeddedIcons.Internet_Unicode;
-        private const string locateButtonIcon = EmbeddedIcons.LeftPointingMagnifyingGlass_Unicode;
-
-        // the currently loaded config
-        private AssetsConfig config;
-
-        // scroll view state
-        private Vector2 scrollPos;
         
-        private bool addingGitUrl = false;
-        private string newGitUrl = "";
-
+        //--- Lifecycle ---//
 
         private void OnEnable()
         {
+            // Ensure model & presenter survive domain reloads
             model ??= new EssentialAssetsImporterModel();
-
-            // Always re-create the presenter and hook its handlers to your view
             presenter ??= new EssentialAssetsImporterPresenter(this, model);
+
+            // Start auto-refresh timer
+            lastAutoRefreshTime = EditorApplication.timeSinceStartup;
+            EditorApplication.update += AutoRefresh;
         }
 
         private void OnDisable()
         {
-            // If your presenter holds unmanaged resources or subscriptions elsewhere, clean up here
+            // Unsubscribe update
+            EditorApplication.update -= AutoRefresh;
             presenter.DisposeIfNeeded();
         }
 
+        //--- GUI Rendering ---//
+
         private void OnGUI()
         {
+            // Scrollable content
             using var sv = new EditorGUILayout.ScrollViewScope(scrollPos);
             scrollPos = sv.scrollPosition;
 
             DrawConfigHeader();
             DrawEntries();
-            DrawImportButton();
-            DrawRefreshButton();
+            DrawActionButtons();
         }
 
+        /// <summary>
+        /// Renders the config profiles header with profile selector.
+        /// </summary>
         private void DrawConfigHeader()
         {
             using (new EditorGUILayout.HorizontalScope("helpBox"))
             {
                 Label.Draw("Config Profiles", EditorStyles.boldLabel);
-
                 GUILayout.FlexibleSpace();
-                
-                PageNavigator.Draw(currentConfigIndex, configList.Count, OnSelectConfigRequested, "Profile");
+                PageNavigator.Draw(
+                    currentIndex: currentConfigIndex,
+                    total: configList?.Count ?? 0,
+                    onPageChanged: OnSelectConfigRequested,
+                    label: "Profile"
+                );
             }
 
+            // Display current AssetsConfig asset
             using (new EditorGUI.DisabledGroupScope(true))
             {
                 EditorGUILayout.ObjectField(config, typeof(AssetsConfig), false);
             }
         }
 
+        /// <summary>
+        /// Renders the list of asset entries with pagination.
+        /// </summary>
         private void DrawEntries()
         {
             DrawHeaderBar();
 
             if (currentEntries == null || currentEntries.Count == 0)
-            { 
-                EditorGUILayout.HelpBox("No assets configured. Please add assets first.", MessageType.Warning);
-                return;
-            }
-
-            for (int i = 0; i < itemsPerPage; i++)
             {
-                if (i < currentEntries.Count)
-                    DrawPackageEntry(i, currentEntries[i]);
-                else
-                    DrawDummyEntry();
+                EditorGUILayout.HelpBox(
+                    message: "No assets configured. Please add assets first.",
+                    type: MessageType.Warning
+                );
             }
-
-            DrawPagination();
+            else
+            {
+                // Render up to itemsPerPage entries
+                for (int i = 0; i < itemsPerPage; i++)
+                {
+                    if (i < currentEntries.Count)
+                        DrawPackageEntry(i, currentEntries[i]);
+                    else
+                        DrawPlaceholderEntry();
+                }
+                DrawPagination();
+            }
         }
 
+        /// <summary>
+        /// Renders the top toolbar for adding local or Git entries.
+        /// </summary>
         private void DrawHeaderBar()
         {
             GUILayout.Space(spacing);
-
             using (new EditorGUILayout.VerticalScope("helpBox"))
+            using (new EditorGUILayout.HorizontalScope())
             {
-                using (new EditorGUILayout.HorizontalScope())
-                {
-                    Label.Draw("Configured Package List", LabelStyles.BoldLabel);
+                Label.Draw("Configured Package List", LabelStyles.BoldLabel);
+                GUILayout.FlexibleSpace();
 
-                    GUILayout.FlexibleSpace();
+                // Add local
+                Button.Draw(
+                    content: new GUIContent(addLocalButtonIcon, "Add local package"),
+                    backgroundColor: Color.white,
+                    onClick: () => OnAddLocalRequested?.Invoke(),
+                    style: ButtonStyles.Inline
+                );
 
-                    Button.Draw
-                    (
-                        content: new(addLocalButtonIcon, "Add local package"),
-                        backgroundColor: Color.white,
-                        onClick: () => OnAddLocalRequested?.Invoke(),
-                        style: ButtonStyles.Inline
-                    );
-
-                    Button.Draw
-                    (
-                        content: new(addGlobalButtonIcon, "Add git package"),
-                        backgroundColor: Color.white,
-                        onClick: () =>
-                        {
-                            addingGitUrl = true; // Toggle visibility
-                        },
-                        style: ButtonStyles.Inline
-                    );
-                }
-
-                if (addingGitUrl)
-                {
-                    DrawGitUrlFieldSection();
-                }
+                // Add Git
+                Button.Draw(
+                    content: new GUIContent(addGlobalButtonIcon, "Add git package"),
+                    backgroundColor: Color.white,
+                    onClick: () => addingGitUrl = true,
+                    style: ButtonStyles.Inline
+                );
             }
+
+            if (addingGitUrl)
+                DrawGitUrlSection();
         }
 
-        private void DrawGitUrlFieldSection()
+        /// <summary>
+        /// Renders the Git URL input section.
+        /// </summary>
+        private void DrawGitUrlSection()
         {
             using (new EditorGUILayout.VerticalScope("box"))
             {
-                GUILayout.Label("Enter Git URL:", EditorStyles.boldLabel);
-
+                EditorGUILayout.LabelField("Enter Git URL:", EditorStyles.boldLabel);
                 newGitUrl = EditorGUILayout.TextField(newGitUrl);
-
                 using (new EditorGUILayout.HorizontalScope())
                 {
-                    Button.Draw
-                    (
+                    Button.Draw(
                         content: new GUIContent("Add"),
                         backgroundColor: Color.white,
-                        onClick: () =>
-                        {
+                        onClick: () => {
                             OnAddGitRequested?.Invoke(newGitUrl);
                             addingGitUrl = false;
-                            newGitUrl = "";
+                            newGitUrl = string.Empty;
                         },
                         style: ButtonStyles.Compact
                     );
-
-                    Button.Draw
-                    (
+                    Button.Draw(
                         content: new GUIContent("Cancel"),
                         backgroundColor: Color.white,
-                        onClick: () =>
-                        {
+                        onClick: () => {
                             addingGitUrl = false;
-                            newGitUrl = "";
+                            newGitUrl = string.Empty;
                         },
                         style: ButtonStyles.Compact
                     );
@@ -244,45 +257,37 @@ namespace VT.Tools.EssentialAssetsImporter
             }
         }
 
+        /// <summary>
+        /// Renders a single package entry row.
+        /// </summary>
         private void DrawPackageEntry(int index, AssetEntryViewModel vm)
         {
-            // 1) Use the presenter‐computed flag
             bool exists = vm.Exists;
-
-            // 2) Compute label width (buttons shown based on exists)
             int buttonCount = exists ? 1 : 2;
             float labelWidth = position.width
-                               - (buttonCount * buttonSize)
-                               - (spacing * buttonCount);
+                                - (buttonCount * buttonSize)
+                                - (spacing * buttonCount);
 
-            // 3) Render
             using (new EditorGUILayout.VerticalScope("box"))
             using (new EditorGUILayout.HorizontalScope())
             {
                 Label.DrawTruncatedLabel(
                     fullText: vm.Entry.ToString(),
+                    textColor: exists ? Color.white : Color.red,
                     tooltip: exists ? vm.Entry.path : $"Missing file: {vm.Entry.path}",
                     availableWidth: labelWidth,
-                    averageCharWidth: averageCharWidth,
-                    exists: exists
+                    averageCharWidth: averageCharWidth
                 );
-
                 GUILayout.FlexibleSpace();
-
                 if (!exists)
-                {
-                    Button.Draw
-                    (
-                        content: new(locateButtonIcon, "Locate missing package"),
+                    Button.Draw(
+                        content: new GUIContent(locateButtonIcon, "Locate missing package"),
                         backgroundColor: Color.white,
                         onClick: () => OnLocateRequested?.Invoke(currentPage * itemsPerPage + index),
                         style: ButtonStyles.Inline
                     );
-                }
-
-                Button.Draw
-                (
-                    content: new(removeButtonIcon, "Remove package"),
+                Button.Draw(
+                    content: new GUIContent(removeButtonIcon, "Remove package"),
                     backgroundColor: Color.white,
                     onClick: () => OnRemoveRequested?.Invoke(currentPage * itemsPerPage + index),
                     style: ButtonStyles.Inline
@@ -290,48 +295,73 @@ namespace VT.Tools.EssentialAssetsImporter
             }
         }
 
-        private void DrawDummyEntry()
+        /// <summary>
+        /// Placeholder row to maintain consistent layout.
+        /// </summary>
+        private void DrawPlaceholderEntry()
         {
             using (new EditorGUILayout.VerticalScope("box", GUILayout.Height(buttonSize + padding * 2)))
             using (new EditorGUILayout.HorizontalScope())
             {
-                Label.Draw("");
+                Label.Draw(string.Empty);
             }
         }
 
+        /// <summary>
+        /// Renders pagination controls for entries.
+        /// </summary>
         private void DrawPagination()
         {
             using (new EditorGUILayout.HorizontalScope())
             {
-                PageNavigator.Draw(currentPage, totalPages, OnPageChanged, "Page");
+                PageNavigator.Draw(
+                    currentIndex: currentPage,
+                    total: totalPages,
+                    onPageChanged: OnPageChanged,
+                    label: "Page"
+                );
             }
         }
 
-        private void DrawImportButton()
+        /// <summary>
+        /// Renders the Import and Refresh buttons.
+        /// </summary>
+        private void DrawActionButtons()
         {
-            if (currentEntries != null && currentEntries.Count > 0)
+            if (currentEntries?.Count > 0)
             {
-                Button.Draw
-                (
-                    content: new GUIContent("Import", "Import all configured assets"),
-                    backgroundColor: new Color(0.3f, 0.8f, 0.5f),
+                Button.Draw(
+                    content: new GUIContent("Import", "Import all configured packages"),
+                    backgroundColor: new Color(0.5f, 1f, 0.5f),
                     onClick: () => OnImportAllRequested?.Invoke(),
                     style: null,
                     GUILayout.Height(32)
                 );
             }
+
+            //Button.Draw(
+            //    content: new GUIContent("Refresh (Debug)", "Reload the current config and entries"),
+            //    backgroundColor: Color.white,
+            //    onClick: () => OnRefreshRequested?.Invoke(),
+            //    style: null,
+            //    GUILayout.Height(32)
+            //);
         }
 
-        private void DrawRefreshButton()
+        /// <summary>
+        /// Automatically refreshes when the window is focused and interval elapsed.
+        /// </summary>
+        private void AutoRefresh()
         {
-            Button.Draw
-            (
-                content: new GUIContent("Refresh (Debug)", "Reload the current config and entries"),
-                backgroundColor: Color.white,
-                onClick: () => OnRefreshRequested?.Invoke(),
-                style: null,
-                GUILayout.Height(32)
-            );
+            if (focusedWindow != this)
+                return;
+
+            double now = EditorApplication.timeSinceStartup;
+            if (now - lastAutoRefreshTime >= autoRefreshInterval)
+            {
+                lastAutoRefreshTime = now;
+                OnRefreshRequested?.Invoke();
+            }
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using VT.Editor.Utils;
 using VT.IO;
 
 namespace VT.Tools.EssentialAssetsImporter
@@ -25,9 +26,17 @@ namespace VT.Tools.EssentialAssetsImporter
                 return string.Empty;
 
             if (sourceType == PackageSourceType.GitURL)
-                return ExtractGitSummary(path);
+                return EmbeddedIcons.Internet_Unicode + " " + ExtractGitSummary(path);
 
-            var parts = path.Split('/', '\\');
+            if (sourceType == PackageSourceType.LocalUnityPackage)
+                return EmbeddedIcons.Package_Unicode + " " + ExtractLocalSummary(path);
+
+            return string.Empty;
+        }
+
+        private string ExtractLocalSummary(string localPath)
+        {
+            var parts = localPath.Split('/', '\\');
             if (parts.Length < 2)
                 return string.Join(" - ", parts);
 
@@ -38,18 +47,18 @@ namespace VT.Tools.EssentialAssetsImporter
             return $"{author} - {packageName}";
         }
 
-        private string ExtractGitSummary(string url)
+        private string ExtractGitSummary(string gitURL)
         {
-            if (string.IsNullOrWhiteSpace(url))
+            if (string.IsNullOrWhiteSpace(gitURL))
                 return string.Empty;
 
             string author = string.Empty;
             string repoName = string.Empty;
 
-            if (url.StartsWith("git@"))
+            if (gitURL.StartsWith("git@"))
             {
                 // SSH format: git@github.com:Org/Repo.git
-                var parts = url.Split(':');
+                var parts = gitURL.Split(':');
                 if (parts.Length == 2)
                 {
                     var pathParts = parts[1].Split('/');
@@ -60,7 +69,7 @@ namespace VT.Tools.EssentialAssetsImporter
                     }
                 }
             }
-            else if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            else if (Uri.TryCreate(gitURL, UriKind.Absolute, out var uri))
             {
                 var pathParts = uri.AbsolutePath.Trim('/').Split('/');
                 if (pathParts.Length >= 2)
@@ -74,7 +83,7 @@ namespace VT.Tools.EssentialAssetsImporter
                 repoName = repoName[..^4];
 
             return string.IsNullOrEmpty(author) || string.IsNullOrEmpty(repoName)
-                ? url
+                ? gitURL
                 : $"{author} - {repoName}";
         }
     }
