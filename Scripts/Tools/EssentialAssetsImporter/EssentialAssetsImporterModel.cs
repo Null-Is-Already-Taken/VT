@@ -214,29 +214,22 @@ namespace VT.Tools.EssentialAssetsImporter
             return exists;
         }
 
-        //--- UI Handlers ---//
+        //--- Functions for UI Handlers ---//
 
         /// <summary>
         /// Opens a file panel to add a local .unitypackage entry.
         /// </summary>
-        public void HandleAddLocal()
+        public void AddLocal(string absolutePath)
         {
-            string absolute = EditorUtility.OpenFilePanel(
-                "Select UnityPackage",
-                ParentPath,
-                "unitypackage"
-            );
-            if (string.IsNullOrEmpty(absolute))
-                return;
+            var relativePath = IOManager.GetRelativePath(ParentPath, absolutePath);
 
-            string relative = IOManager.GetRelativePath(ParentPath, absolute);
-            if (string.IsNullOrEmpty(relative))
+            if (string.IsNullOrEmpty(relativePath))
                 return;
 
             var entry = new AssetEntry
             {
                 sourceType = PackageSourceType.LocalUnityPackage,
-                path = relative
+                path = relativePath
             };
             AddEntry(entry);
         }
@@ -244,7 +237,7 @@ namespace VT.Tools.EssentialAssetsImporter
         /// <summary>
         /// Validates and adds a Git URL entry.
         /// </summary>
-        public void HandleAddGit(string gitURL)
+        public void AddGit(string gitURL)
         {
             if (string.IsNullOrWhiteSpace(gitURL))
                 return;
@@ -270,46 +263,36 @@ namespace VT.Tools.EssentialAssetsImporter
         }
 
         /// <summary>
-        /// Opens a file panel to locate and update a missing local entry.
+        /// Update a missing local entry.
         /// </summary>
-        public void HandleLocate(int index)
+        private bool LocateMissingEntry(AssetEntry entry, string selected)
         {
-            if (index < 0 || index >= Entries.Count)
-                return;
-
-            var entry = Entries[index];
-            string selected = EditorUtility.OpenFilePanel(
-                "Locate UnityPackage",
-                ParentPath,
-                "unitypackage"
-            );
-            if (string.IsNullOrEmpty(selected))
-                return;
-
             string relative = IOManager.GetRelativePath(ParentPath, selected);
             if (string.IsNullOrEmpty(relative))
-                return;
+                return false;
 
             bool duplicate = Entries.Any(e =>
                 e != entry && e.sourceType == PackageSourceType.LocalUnityPackage && e.path == relative
             );
             if (duplicate)
-                return;
+                return false;
 
             entry.sourceType = PackageSourceType.LocalUnityPackage;
             entry.path = relative;
             SaveConfig();
+            return true;
         }
 
         /// <summary>
         /// Asynchronously imports all entries: local .unitypackages or Git URLs via UPM.
         /// </summary>
-        public async Task HandleImportAsync()
+        public async Task ImportAsync(AssetsConfig assetsConfig)
         {
-            int total = Entries.Count;
+            var entries = assetsConfig.assetsEntries;
+            int total = entries.Count;
             for (int i = 0; i < total; i++)
             {
-                var e = Entries[i];
+                var e = entries[i];
                 float progress = (float)i / total;
                 try
                 {
@@ -329,6 +312,48 @@ namespace VT.Tools.EssentialAssetsImporter
                 }
             }
             AssetDatabase.Refresh();
+        }
+
+        //--- UI Handlers ---//
+
+        public void HandleAddLocal()
+        {
+            string absolute = EditorUtility.OpenFilePanel(
+                "Select UnityPackage",
+                ParentPath,
+                "unitypackage"
+            );
+            if (string.IsNullOrEmpty(absolute))
+                return;
+
+            AddLocal(absolute);
+        }
+
+        public void HandleAddGit(string gitURL)
+        {
+            AddGit(gitURL);
+        }
+
+        public void HandleLocate(int index)
+        {
+            if (index < 0 || index >= Entries.Count)
+                return;
+
+            var entry = Entries[index];
+            string absolutePath = EditorUtility.OpenFilePanel(
+                "Locate UnityPackage",
+                ParentPath,
+                "unitypackage"
+            );
+            if (string.IsNullOrEmpty(absolutePath))
+                return;
+
+            LocateMissingEntry(entry, absolutePath);
+        }
+
+        public async Task HandleImportAsync()
+        {
+            await ImportAsync(Config);
         }
 
         //--- Private Fields ---//
