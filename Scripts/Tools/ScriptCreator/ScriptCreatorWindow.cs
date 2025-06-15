@@ -1,9 +1,7 @@
-#if UNITY_EDITOR
+#if UNITY_EDITOR && ODIN_INSPECTOR
 
-using DG.DemiEditor;
 using Sirenix.OdinInspector;
 using Sirenix.OdinInspector.Editor;
-using Sirenix.Utilities;
 using Sirenix.Utilities.Editor;
 using System.IO;
 using System.Text;
@@ -24,7 +22,6 @@ namespace VT.Tools.ScriptCreator
 
         [LabelText("Script Name")]
         [ReadOnly]
-        //[ValidateInput("@!string.IsNullOrWhiteSpace(scriptName)", "Name cannot be empty")]
         public string scriptName = "NewScript";
 
         [LabelText("Destination Folder")]
@@ -109,7 +106,7 @@ namespace VT.Tools.ScriptCreator
                 InternalLogger.Instance.LogWarning("<b>Empty script content:</b> Loading default script.");
             }
 
-            if (!scriptContent.IsNullOrEmpty())
+            if (scriptContent != string.Empty || scriptContent != null)
             {
                 IOManager.SaveText(filePath, scriptContent);
                 InternalLogger.Instance.LogDebug($"<b>Script saved:</b> {filePath}");
@@ -119,21 +116,6 @@ namespace VT.Tools.ScriptCreator
             {
                 InternalLogger.Instance.LogError($"<b>Fail to save script...</b>");
             }
-        }
-
-        [Button(ButtonSizes.Large)]
-        private void TestIO()
-        {
-            //InternalLogger.Instance.LogDebug(this.folderPath);
-            //InternalLogger.Instance.LogDebug(IOManager.ResolvePath(this.folderPath));
-            //InternalLogger.Instance.LogDebug(IOManager.ResolvePath("#persistent/" + this.folderPath));
-            //InternalLogger.Instance.LogDebug(IOManager.ResolvePath("#data/" + this.folderPath));
-            //InternalLogger.Instance.LogDebug(IOManager.ResolvePath("#streaming/" + this.folderPath));
-            //InternalLogger.Instance.LogDebug(IOManager.ResolvePath("#temp/" + this.folderPath));
-            //InternalLogger.Instance.LogDebug(IOManager.ResolvePath("#project/" + this.folderPath));
-
-            //var folderPath = "#persistent/" + this.folderPath;
-            //InternalLogger.Instance.LogDebug($"Directory {folderPath} exists:" + IOManager.DirectoryExists(folderPath));
         }
 
         [MenuItem("Tools/Script Creator")]
