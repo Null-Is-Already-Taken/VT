@@ -1,3 +1,5 @@
+#if DOTWEEN
+
 using UnityEngine;
 using DG.Tweening;
 
@@ -23,3 +25,5 @@ namespace VT.Extensions
         }
     }
 }
+
+#endif
