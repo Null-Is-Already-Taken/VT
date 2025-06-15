@@ -338,14 +338,6 @@ namespace VT.Tools.EssentialAssetsImporter
                     GUILayout.Height(32)
                 );
             }
-
-            //Button.Draw(
-            //    content: new GUIContent("Refresh (Debug)", "Reload the current config and entries"),
-            //    backgroundColor: Color.white,
-            //    onClick: () => OnRefreshRequested?.Invoke(),
-            //    style: null,
-            //    GUILayout.Height(32)
-            //);
         }
 
         /// <summary>
