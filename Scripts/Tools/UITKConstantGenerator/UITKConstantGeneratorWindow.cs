@@ -24,14 +24,6 @@ namespace VT.Tools.UITKConstantGenerator
         // For toggling the use of UITKConstant wrapper
         private bool useWrapperConstant = false;
 
-        //[InlineButton(nameof(ToggleUseWrapperConstant), "$buttonName")]
-        //private string buttonName = "Enable Wrapper Constant";
-        //private void ToggleUseWrapperConstant()
-        //{
-        //    useWrapperConstant = !useWrapperConstant;
-        //    buttonName = useWrapperConstant ? "Disable Wrapper Constant" : "Enable Wrapper Constant";
-        //}
-
         [Button("Generate Preview", ButtonSizes.Large)]
         [GUIColor(0.2f, 0.6f, 1f)]
         public void GeneratePreview()

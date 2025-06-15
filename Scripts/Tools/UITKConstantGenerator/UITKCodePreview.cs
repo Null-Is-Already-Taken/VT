@@ -1,3 +1,4 @@
+#if ODIN_INSPECTOR
 // Preview data class
 using Sirenix.OdinInspector;
 using System.IO;
@@ -23,3 +24,4 @@ namespace VT.Tools.UITKConstantGenerator
         }
     }
 }
+#endif
