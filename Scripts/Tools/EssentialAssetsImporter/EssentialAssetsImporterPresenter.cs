@@ -67,6 +67,7 @@ namespace VT.Tools.EssentialAssetsImporter
         {
             // Subscribe to view events
             view.OnLoadConfigRequested += Refresh;
+            view.OnLoadConfigFromJSONRequested += HandleLoadConfigFromJSON;
             view.OnAddLocalRequested += HandleAddLocal;
             view.OnAddGitRequested += HandleAddGit;
             view.OnLocateRequested += HandleLocate;
@@ -146,6 +147,7 @@ namespace VT.Tools.EssentialAssetsImporter
         private void UnsubscribeViewEvents()
         {
             view.OnLoadConfigRequested -= Refresh;
+            view.OnLoadConfigFromJSONRequested -= HandleLoadConfigFromJSON;
             view.OnAddLocalRequested -= HandleAddLocal;
             view.OnAddGitRequested -= HandleAddGit;
             view.OnLocateRequested -= HandleLocate;
@@ -163,15 +165,15 @@ namespace VT.Tools.EssentialAssetsImporter
 
         //--- Event Handlers ---//
 
-        private void HandleAddLocal()
+        private void HandleAddLocal(string absolutePath)
         {
-            model.HandleAddLocal();
+            model.HandleAddLocal(absolutePath);
             Refresh();
         }
 
-        private void HandleAddGit(string gitUrl)
+        private void HandleAddGit(string gitURL)
         {
-            model.HandleAddGit(gitUrl);
+            model.HandleAddGit(gitURL);
             Refresh();
         }
 
@@ -209,6 +211,19 @@ namespace VT.Tools.EssentialAssetsImporter
             model.SelectConfig(configs[newIndex]);
             view.UpdateConfigPageInfo(currentConfigIndex, configs.Count);
             Refresh();
+        }
+
+        private void HandleLoadConfigFromJSON()
+        {
+            model.HandleLoadConfigFromJSON((path) =>
+            {
+                if (!string.IsNullOrEmpty(path))
+                {
+                    model.LoadConfigFromJSON(path);
+                    RefreshAllConfigs();
+                    Refresh();
+                }
+            });
         }
 
         private void HandleRefreshRequested()

@@ -29,7 +29,8 @@ namespace VT.Tools.EssentialAssetsImporter
         public event Action OnLoadConfigRequested;
         public event Action<int> OnLocateRequested;
         public event Action<int> OnRemoveRequested;
-        public event Action OnAddLocalRequested;
+        public event Action<string> OnLoadConfigFromJSONRequested;
+        public event Action<string> OnAddLocalRequested;
         public event Action<string> OnAddGitRequested;
         public event Action OnImportAllRequested;
         public event Action OnRefreshRequested;
@@ -206,7 +207,14 @@ namespace VT.Tools.EssentialAssetsImporter
                 Button.Draw(
                     content: new GUIContent(addLocalButtonIcon, "Add local package"),
                     backgroundColor: Color.white,
-                    onClick: () => OnAddLocalRequested?.Invoke(),
+                    onClick: () => {
+                        string absolutePath = EditorUtility.OpenFilePanel(
+                            "Select UnityPackage",
+                            PathUtils.GetAssetStorePath(),
+                            "unitypackage"
+                        );
+                        OnAddLocalRequested?.Invoke(absolutePath);
+                    },
                     style: ButtonStyles.Inline
                 );
 

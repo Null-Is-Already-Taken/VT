@@ -23,7 +23,7 @@ namespace VT.Tools.EssentialAssetsImporter
         public List<AssetEntry> Entries => Config.assetsEntries;
 
         /// <summary>Base path for local asset store packages.</summary>
-        public string ParentPath => parentPath;
+        //public string ParentPath => parentPath;
 
         /// <summary>Folder where AssetsConfig assets are stored.</summary>
         public string ConfigFolderPath => configFolderPath;
@@ -48,7 +48,7 @@ namespace VT.Tools.EssentialAssetsImporter
         /// </summary>
         public EssentialAssetsImporterModel()
         {
-            parentPath = PathUtils.GetAssetStoreBasePath();
+            parentPath = PathUtils.GetAssetStorePath();
             fileExistenceCache = new();
 
             // Ensure the config folder exists
@@ -145,6 +145,14 @@ namespace VT.Tools.EssentialAssetsImporter
             fileExistenceCache.Clear();
         }
 
+        public void LoadConfigFromJSON(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            config.LoadConfigFromJSON(path);
+        }
+
         //--- Entry Management ---//
 
         /// <summary>
@@ -194,32 +202,10 @@ namespace VT.Tools.EssentialAssetsImporter
                 InternalLogger.Instance.LogDebug($"[Model] Attempted remove of missing entry: {entry}");
         }
 
-        //--- File Existence Caching ---//
-
-        /// <summary>
-        /// Returns true if the entry is a Git URL or the local file exists (with caching).
-        /// </summary>
-        public bool FileExists(AssetEntry entry)
-        {
-            if (entry.sourceType == PackageSourceType.GitURL)
-                return true;
-
-            string full = IOManager.CombinePaths(ParentPath, entry.path);
-            if (!fileExistenceCache.TryGetValue(full, out bool exists))
-            {
-                exists = IOManager.FileExists(full);
-                fileExistenceCache[full] = exists;
-            }
-
-            return exists;
-        }
-
-        //--- Functions for UI Handlers ---//
-
         /// <summary>
         /// Opens a file panel to add a local .unitypackage entry.
         /// </summary>
-        public void AddLocal(string absolutePath)
+        public void AddLocalEntry(string absolutePath)
         {
             var relativePath = IOManager.GetRelativePath(ParentPath, absolutePath);
 
@@ -237,7 +223,7 @@ namespace VT.Tools.EssentialAssetsImporter
         /// <summary>
         /// Validates and adds a Git URL entry.
         /// </summary>
-        public void AddGit(string gitURL)
+        public void AddGitEntry(string gitURL)
         {
             if (string.IsNullOrWhiteSpace(gitURL))
                 return;
@@ -283,6 +269,32 @@ namespace VT.Tools.EssentialAssetsImporter
             return true;
         }
 
+        //--- File Existence Caching ---//
+
+        /// <summary>
+        /// Returns true if the entry is a Git URL or the local file exists (with caching).
+        /// </summary>
+        public bool FileExists(AssetEntry entry)
+        {
+            if (entry == null)
+                return false;
+
+            if (entry.sourceType == PackageSourceType.GitURL)
+                return true;
+
+            string full = entry.FullPath;
+
+            if (!fileExistenceCache.TryGetValue(full, out bool exists))
+            {
+                exists = IOManager.FileExists(full);
+                fileExistenceCache[full] = exists;
+            }
+
+            return exists;
+        }
+
+        //--- Importing Assets ---//
+
         /// <summary>
         /// Asynchronously imports all entries: local .unitypackages or Git URLs via UPM.
         /// </summary>
@@ -298,8 +310,7 @@ namespace VT.Tools.EssentialAssetsImporter
                 {
                     if (e.sourceType == PackageSourceType.LocalUnityPackage && FileExists(e))
                     {
-                        string fullPath = IOManager.CombinePaths(ParentPath, e.path);
-                        AssetDatabase.ImportPackage(fullPath, false);
+                        AssetDatabase.ImportPackage(e.FullPath, false);
                     }
                     else if (e.sourceType == PackageSourceType.GitURL)
                     {
@@ -316,25 +327,29 @@ namespace VT.Tools.EssentialAssetsImporter
 
         //--- UI Handlers ---//
 
-        public void HandleAddLocal()
+        public void HandleLoadConfigFromJSON()
         {
-            string absolute = EditorUtility.OpenFilePanel(
-                "Select UnityPackage",
-                ParentPath,
-                "unitypackage"
-            );
-            if (string.IsNullOrEmpty(absolute))
+            string path = EditorUtility.OpenFilePanel("Import Config", "", "json");
+            if (string.IsNullOrEmpty(path))
                 return;
 
-            AddLocal(absolute);
+            LoadConfigFromJSON(path);
+        }
+
+        public void HandleAddLocal(string absolutePath)
+        {
+            if (string.IsNullOrEmpty(absolutePath))
+                return;
+
+            AddLocalEntry(absolutePath);
         }
 
         public void HandleAddGit(string gitURL)
         {
-            AddGit(gitURL);
+            AddGitEntry(gitURL);
         }
 
-        public void HandleLocate(int index)
+        public void HandleLocate(int index, string absolutePath)
         {
             if (index < 0 || index >= Entries.Count)
                 return;

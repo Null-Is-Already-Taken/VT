@@ -13,6 +13,8 @@ namespace VT.Tools.EssentialAssetsImporter
     [Serializable]
     public class AssetEntry
     {
+        public string FullPath => IOManager.CombinePaths(PathUtils.GetAssetStorePath(), path);
+
         public PackageSourceType sourceType = PackageSourceType.LocalUnityPackage;
 
         public string path;

@@ -108,7 +108,7 @@ namespace VT.Tools.ScriptCreator
 
             if (scriptContent != string.Empty || scriptContent != null)
             {
-                IOManager.SaveText(filePath, scriptContent);
+                IOManager.WriteAllText(filePath, scriptContent);
                 InternalLogger.Instance.LogDebug($"<b>Script saved:</b> {filePath}");
                 AssetDatabase.Refresh();
             }

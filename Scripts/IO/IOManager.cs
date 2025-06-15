@@ -82,6 +82,11 @@ namespace VT.IO
             return Path.GetFileName(uri.LocalPath);
         }
 
+        public static string GetTempPath()
+        {
+            return NormalizePathSeparators(Path.GetTempPath());
+        }
+
         public static string GetURIVersion(Uri uri)
         {
             var segments = uri.AbsoluteUri.Split('/');
@@ -280,8 +285,6 @@ namespace VT.IO
             return NormalizePathSeparators(Path.GetFullPath(combined));
         }
 
-        public static string ReadAllText(string path) => File.ReadAllText(path);
-
         /// <summary>
         /// Deletes a file at the specified path if it exists.
         /// </summary>
@@ -315,7 +318,7 @@ namespace VT.IO
         /// <summary>
         /// Saves string content to a file at the given path.
         /// </summary>
-        public static void SaveText(string path, string content)
+        public static void WriteAllText(string path, string content)
         {
             var normalizedPath = NormalizePathSeparators(path);
             File.WriteAllText(normalizedPath, content);
@@ -324,7 +327,7 @@ namespace VT.IO
         /// <summary>
         /// Loads string content from a file at the given path.
         /// </summary>
-        public static string LoadText(string path)
+        public static string ReadAllText(string path)
         {
             var normalizedPath = NormalizePathSeparators(path);
             return File.Exists(normalizedPath) ? File.ReadAllText(normalizedPath) : null;
@@ -355,7 +358,7 @@ namespace VT.IO
         {
             var normalizedPath = NormalizePathSeparators(path);
             string json = JsonUtility.ToJson(data, prettyPrint: true);
-            SaveText(normalizedPath, json);
+            WriteAllText(normalizedPath, json);
         }
 
         /// <summary>
@@ -364,7 +367,7 @@ namespace VT.IO
         public static T LoadJson<T>(string path)
         {
             var normalizedPath = NormalizePathSeparators(path);
-            string json = LoadText(normalizedPath);
+            string json = ReadAllText(normalizedPath);
             return !string.IsNullOrEmpty(json) ? JsonUtility.FromJson<T>(json) : default;
         }
     }

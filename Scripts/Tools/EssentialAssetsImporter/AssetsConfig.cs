@@ -1,9 +1,18 @@
+#if UNITY_EDITOR
+
 #if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
+using System;
+
 #endif
 
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using UnityEngine;
+using VT.Editor.Utils;
+using VT.IO;
+using VT.Logger;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
@@ -16,5 +25,63 @@ namespace VT.Tools.EssentialAssetsImporter
         [HideLabel]
 #endif
         public List<AssetEntry> assetsEntries = new();
+
+        public static AssetsConfig LoadFromJson(string path)
+        {
+            if (!File.Exists(path)) throw new FileNotFoundException("Config not found: " + path);
+            string json = File.ReadAllText(path);
+            return JsonUtility.FromJson<AssetsConfig>(json);
+        }
+
+        public void LoadConfigFromJSON(string path)
+        {
+            if (!string.IsNullOrEmpty(path))
+            {
+                try
+                {
+                    AssetsConfig newConfig = LoadFromJson(path);
+
+                    assetsEntries.Clear();
+                    foreach (var entry in newConfig.assetsEntries)
+                    {
+                        entry.path = PathUtils.FromAlias(entry.path); // resolve alias to absolute
+                        assetsEntries.Add(entry);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    InternalLogger.Instance.LogError("Failed to load config: " + ex.Message);
+                }
+            }
+        }
+
+        public void SaveConfigToJSON(string path)
+        {
+            try
+            {
+                // Clone and alias the paths
+                AssetsConfig configToSave = new AssetsConfig
+                {
+                    assetsEntries = assetsEntries
+                        .Select(entry => new AssetEntry
+                        {
+                            sourceType = entry.sourceType,
+                            path = PathUtils.ToAlias(entry.path)
+                        }).ToList()
+                };
+
+                string json = JsonUtility.ToJson(configToSave, true);
+                IOManager.WriteAllText(path, json);
+
+                Debug.Log("Config saved to: " + path);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("Failed to save config: " + ex.Message);
+            }
+        }
+
     }
 }
+
+#endif // UNITY_EDITOR
