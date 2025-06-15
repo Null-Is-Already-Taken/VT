@@ -1,3 +1,5 @@
+#if DOTWEEN
+
 using UnityEngine;
 using UnityEngine.UI;
 using System;
@@ -109,3 +111,5 @@ namespace VT.ReuseableSystems.UI.Legacy
         }
     }
 }
+
+#endif // DOTWEEN

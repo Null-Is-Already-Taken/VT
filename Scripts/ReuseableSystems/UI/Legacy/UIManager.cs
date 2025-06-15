@@ -1,3 +1,5 @@
+#if DOTWEEN
+
 using UnityEngine;
 using System.Collections.Generic;
 using VT.Patterns.SingletonPattern;
@@ -145,3 +147,5 @@ namespace VT.ReuseableSystems.UI.Legacy
         }
     }
 }
+
+#endif // DOTWEEN
