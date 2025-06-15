@@ -1,7 +1,11 @@
 using UnityEngine;
 using System;
 using VT.Patterns.SingletonPattern;
+
+#if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
+#endif
+
 using VT.Utils;
 
 
@@ -16,10 +20,22 @@ namespace VT.Logger
 
         [SerializeField] private LogLevel enabledLogLevels;
 
-        [FoldoutGroup("Color Settings"), SerializeField] private Color traceColor = Color.grey;
-        [FoldoutGroup("Color Settings"), SerializeField] private Color debugColor = Color.white;
-        [FoldoutGroup("Color Settings"), SerializeField] private Color warningColor = Color.yellow;
-        [FoldoutGroup("Color Settings"), SerializeField] private Color errorColor = Color.red;
+#if ODIN_INSPECTOR
+        [FoldoutGroup("Color Settings")]
+#endif
+        [SerializeField] private Color traceColor = Color.grey;
+#if ODIN_INSPECTOR
+        [FoldoutGroup("Color Settings")]
+#endif
+        [SerializeField] private Color debugColor = Color.white;
+#if ODIN_INSPECTOR
+        [FoldoutGroup("Color Settings")]
+#endif
+        [SerializeField] private Color warningColor = Color.yellow;
+#if ODIN_INSPECTOR
+        [FoldoutGroup("Color Settings")]
+#endif
+        [SerializeField] private Color errorColor = Color.red;
 
         protected override void Awake()
         {
@@ -28,7 +44,9 @@ namespace VT.Logger
             SetLogLevels(enabledLogLevels);
         }
 
+#if ODIN_INSPECTOR
         [Button]
+#endif
         private void Reset()
         {
             traceColor = defaultTraceColor;
