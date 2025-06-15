@@ -1,7 +1,9 @@
 {
     "name": "VT.Tools.BookmarkEditor",
     "rootNamespace": "VT.Tools.BookmarkEditor",
-    "references": [],
+    "references": [
+        "GUID:9f8e408bc8d8e4901833e026e75e395a"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

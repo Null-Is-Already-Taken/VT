@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace VT.Extensions
 {
-    public static class MeshColliderExtentions
+    public static class MeshColliderExtensions
     {
         public static Vector3 GetRandomPointInMesh(this MeshCollider meshCollider)
         {
