@@ -21,7 +21,7 @@ namespace VT.Tools.UITKConstantGenerator
             {
                 if (path.EndsWith(".uxml"))
                 {
-                    string normalized = IOManager.NormalizePathSeparators(path);
+                    string normalized = IOManager.NormalizePath(path);
                     if (trackingMap.ContainsKey(normalized))
                     {
                         dirtyUxmls.Add(normalized);
@@ -33,7 +33,7 @@ namespace VT.Tools.UITKConstantGenerator
             {
                 if (path.EndsWith(".uss"))
                 {
-                    string ussPath = IOManager.NormalizePathSeparators(path);
+                    string ussPath = IOManager.NormalizePath(path);
                     if (ussToUxmlMap.TryGetValue(ussPath, out var linkedUxmls))
                     {
                         foreach (var uxml in linkedUxmls)
@@ -63,7 +63,7 @@ namespace VT.Tools.UITKConstantGenerator
             string className = UITKConstantGeneratorAPI.SanitizeClassName(Path.GetFileNameWithoutExtension(uxmlPath));
             string content = UITKConstantGeneratorAPI.GenerateClassContent(uxmlPath, className);
             string outputPath = Path.Combine(Path.GetDirectoryName(uxmlPath), className + ".cs");
-            outputPath = IOManager.NormalizePathSeparators(outputPath);
+            outputPath = IOManager.NormalizePath(outputPath);
 
             File.WriteAllText(outputPath, content);
             InternalLogger.Instance.LogDebug($"[UIConstantTracker] Synced: {outputPath}");

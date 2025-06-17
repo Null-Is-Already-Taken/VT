@@ -171,29 +171,30 @@ namespace VT.Tools.EssentialAssetsImporter
                         EditorGUILayout.ObjectField(config, typeof(AssetsConfig), false, GUILayout.ExpandWidth(expand: true));
                     }
 
-                    // if (config.assetsEntries.Count > 0)
-                    // {
-                    //     Button.Draw(
-                    //         content: new GUIContent(saveButtonIcon, "Save config to JSON"),
-                    //         backgroundColor: Color.white,
-                    //         onClick: () => { OnSaveConfigToJSONRequested?.Invoke(); },
-                    //         style: ButtonStyles.Inline
-                    //     );
+                     if (config.assetsEntries.Count > 0)
+                    {
+                        Button.Draw(
+                            content: new GUIContent(saveButtonIcon, "Save config to JSON"),
+                            backgroundColor: Color.white,
+                            onClick: () => { OnSaveConfigToJSONRequested?.Invoke(); },
+                            style: ButtonStyles.Inline
+                        );
 
-                    //     Button.Draw(
-                    //         content: new GUIContent(loadButtonIcon, "Load config JSON"),
-                    //         backgroundColor: Color.white,
-                    //         onClick: () => {
-                    //             string absolutePath = EditorUtility.OpenFilePanel(
-                    //                 "Select UnityPackage",
-                    //                 PathUtils.GetAssetStorePath(),
-                    //                 "unitypackage"
-                    //             );
-                    //             OnLoadConfigFromJSONRequested?.Invoke(absolutePath);
-                    //         },
-                    //         style: ButtonStyles.Inline
-                    //     );
-                    // }
+                        Button.Draw(
+                            content: new GUIContent(loadButtonIcon, "Load config JSON"),
+                            backgroundColor: Color.white,
+                            onClick: () =>
+                            {
+                                string absolutePath = EditorUtility.OpenFilePanel(
+                                    "Select UnityPackage",
+                                    PathUtils.GetAssetStorePath(),
+                                    "unitypackage"
+                                );
+                                OnLoadConfigFromJSONRequested?.Invoke(absolutePath);
+                            },
+                            style: ButtonStyles.Inline
+                        );
+                    }
                 }
             }
         }
@@ -317,7 +318,7 @@ namespace VT.Tools.EssentialAssetsImporter
                 Label.DrawTruncatedLabel(
                     fullText: vm.Entry.ToString(),
                     textColor: exists ? Color.white : Color.red,
-                    tooltip: exists ? vm.Entry.relativePath : $"Missing file: {vm.Entry.relativePath}",
+                    tooltip: exists ? vm.Entry.RelativePath : $"Missing file: {vm.Entry.RelativePath}",
                     availableWidth: labelWidth,
                     averageCharWidth: averageCharWidth,
                     options: GUILayout.ExpandWidth(expand: true)

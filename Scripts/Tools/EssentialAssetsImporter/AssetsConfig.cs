@@ -42,11 +42,11 @@ namespace VT.Tools.EssentialAssetsImporter
                     AssetsConfig newConfig = LoadFromJson(path);
 
                     assetsEntries.Clear();
-                    foreach (var entry in newConfig.assetsEntries)
-                    {
-                        entry.relativePath = PathUtils.FromAlias(entry.relativePath); // resolve alias to absolute
-                        assetsEntries.Add(entry);
-                    }
+                    //foreach (var entry in newConfig.assetsEntries)
+                    //{
+                    //    entry.RelativePath = PathUtils.FromAlias(entry.RelativePath); // resolve alias to absolute
+                    //    assetsEntries.Add(entry);
+                    //}
                 }
                 catch (Exception ex)
                 {
@@ -64,7 +64,7 @@ namespace VT.Tools.EssentialAssetsImporter
                 configToSave.assetsEntries = assetsEntries
                         .Select(entry => new AssetEntry(
                             sourceType: entry.sourceType,
-                            absolutePath: PathUtils.FromAlias(entry.absolutePath)
+                            absolutePath: PathUtils.FromAlias(entry.AbsolutePath)
                         ))
                         .ToList();
 

@@ -39,12 +39,12 @@ namespace VT.Tools.UITKConstantGenerator
 
             foreach (string uxmlPathRaw in uxmlFiles)
             {
-                string uxmlPath = IOManager.NormalizePathSeparators(uxmlPathRaw);
+                string uxmlPath = IOManager.NormalizePath(uxmlPathRaw);
                 string fileName = Path.GetFileNameWithoutExtension(uxmlPath);
                 string className = UITKConstantGeneratorAPI.SanitizeClassName(fileName);
                 string uxmlFolder = Path.GetDirectoryName(uxmlPath);
                 string outputPath = Path.Combine(uxmlFolder, className + ".cs");
-                outputPath = IOManager.NormalizePathSeparators(outputPath);
+                outputPath = IOManager.NormalizePath(outputPath);
 
                 string generatedContent = UITKConstantGeneratorAPI.GenerateClassContent(uxmlPath, className, useWrapperConstant: useWrapperConstant);
                 previewItems.Add(new UITKCodePreview(uxmlPath, outputPath, generatedContent));

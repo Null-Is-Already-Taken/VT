@@ -86,7 +86,7 @@ namespace VT.Tools.UITKConstantGenerator
                 path = path[..queryIndex];
             }
 
-            return IOManager.NormalizePathSeparators(path);
+            return IOManager.NormalizePath(path);
         }
 
         [System.Serializable]

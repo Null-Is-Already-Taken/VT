@@ -179,7 +179,7 @@ namespace VT.Tools.EssentialAssetsImporter
             config.assetsEntries ??= new List<AssetEntry>();
 
             bool exists = config.assetsEntries.Any(e =>
-                e.sourceType == entry.sourceType && e.relativePath == entry.relativePath
+                e.sourceType == entry.sourceType && e.RelativePath == entry.RelativePath
             );
 
             if (!exists)
@@ -213,8 +213,6 @@ namespace VT.Tools.EssentialAssetsImporter
         /// </summary>
         public void AddLocalEntry(string absolutePath)
         {
-            // var relativePath = IOManager.GetRelativePath(ParentPath, absolutePath);
-
             if (string.IsNullOrEmpty(absolutePath))
                 return;
 
@@ -240,7 +238,7 @@ namespace VT.Tools.EssentialAssetsImporter
                 return;
             }
 
-            if (Entries.Any(e => e.sourceType == PackageSourceType.GitURL && e.relativePath == gitURL))
+            if (Entries.Any(e => e.sourceType == PackageSourceType.GitURL && e.RelativePath == gitURL))
             {
                 InternalLogger.Instance.LogWarning("[Model] Duplicate Git URL.");
                 return;
@@ -284,7 +282,7 @@ namespace VT.Tools.EssentialAssetsImporter
             if (entry.sourceType == PackageSourceType.GitURL)
                 return true;
 
-            string full = entry.FullPath;
+            string full = entry.AbsolutePath;
 
             if (!fileExistenceCache.TryGetValue(full, out bool exists))
             {
@@ -312,16 +310,16 @@ namespace VT.Tools.EssentialAssetsImporter
                 {
                     if (e.sourceType == PackageSourceType.LocalUnityPackage && FileExists(e))
                     {
-                        AssetDatabase.ImportPackage(e.FullPath, false);
+                        AssetDatabase.ImportPackage(e.AbsolutePath, false);
                     }
                     else if (e.sourceType == PackageSourceType.GitURL)
                     {
-                        await UPMClientWrapper.AddPackageAsync(e.relativePath);
+                        await UPMClientWrapper.AddPackageAsync(e.RelativePath);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[Model] Import failed for '{e.relativePath}': {ex.Message}");
+                    Debug.LogError($"[Model] Import failed for '{e.RelativePath}': {ex.Message}");
                 }
             }
             AssetDatabase.Refresh();

@@ -1,8 +1,10 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using VT.IO;
+using VT.Logger;
 
 namespace VT.Editor.Utils
 {
@@ -57,23 +59,29 @@ namespace VT.Editor.Utils
 
         public static string FromAlias(string path)
         {
+            string normalizedPath = IOManager.NormalizePath(path);
+
             foreach (var kvp in AliasToPath)
             {
                 string alias = GetAliasString(kvp.Key);
                 string realPath = kvp.Value();
                 path = path.Replace(alias, realPath);
             }
+
             return path;
         }
 
         public static string ToAlias(string path)
         {
+            string normalizedPath = IOManager.NormalizePath(path);
+
             foreach (var kvp in AliasToPath)
             {
                 string alias = GetAliasString(kvp.Key);
                 string realPath = kvp.Value();
-                path = path.Replace(realPath, alias);
+                path = normalizedPath.Replace(realPath, alias);
             }
+
             return path;
         }
 

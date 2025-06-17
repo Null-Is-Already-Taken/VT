@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using VT.Editor.Utils;
 using VT.IO;
 using VT.Logger;
@@ -22,27 +21,34 @@ namespace VT.Tools.EssentialAssetsImporter
             switch (sourceType)
             {
                 case PackageSourceType.LocalUnityPackage:
-                    this.absolutePath = PathUtils.ToAlias(absolutePath);
+                    this.absolutePath = IOManager.NormalizePath(absolutePath);
                     relativePath = IOManager.GetRelativePath(PathUtils.GetAssetStorePath(), absolutePath);
-                    InternalLogger.Instance.LogDebug($"relativePath: {relativePath}");
+                    aliasPath = PathUtils.ToAlias(absolutePath);
+                    InternalLogger.Instance.LogDebug($"FileExists test: {IOManager.FileExists(PathUtils.FromAlias(aliasPath))}");
                     break;
                 case PackageSourceType.GitURL:
                     this.absolutePath = absolutePath;
                     relativePath = absolutePath;
+                    aliasPath = absolutePath;
                     break;
                 default:
                     this.absolutePath = string.Empty;
                     relativePath = string.Empty;
+                    aliasPath = string.Empty;
                     break;
             }
         }
 
-        public string FullPath => IOManager.CombinePaths(PathUtils.GetAssetStorePath(), relativePath);
-
         public PackageSourceType sourceType = PackageSourceType.LocalUnityPackage;
 
-        public string absolutePath; // with path alias
-        public string relativePath;
+        private string absolutePath;
+        public string AbsolutePath => absolutePath;
+
+        private string relativePath;
+        public string RelativePath => relativePath;
+
+        private string aliasPath;
+        public string AliasPath => aliasPath;
 
         /// <summary>
         /// Returns a formatted summary of the package source, such as "Cysharp - UniTask".

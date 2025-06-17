@@ -64,7 +64,7 @@ namespace VT.IO
         /// A normalized file path string with consistent directory separators,
         /// or the original string if it is null or empty.
         /// </returns>
-        public static string NormalizePathSeparators(string path)
+        public static string NormalizePath(string path)
         {
             if (string.IsNullOrEmpty(path)) return null;
 
@@ -84,7 +84,7 @@ namespace VT.IO
 
         public static string GetTempPath()
         {
-            return NormalizePathSeparators(Path.GetTempPath());
+            return NormalizePath(Path.GetTempPath());
         }
 
         public static string GetURIVersion(Uri uri)
@@ -116,14 +116,14 @@ namespace VT.IO
 
             // Normalize the path and get the file name without extension
             string fileName = Path.GetFileNameWithoutExtension(path);
-            return NormalizePathSeparators(fileName);
+            return NormalizePath(fileName);
         }
 
         public static string GetDirectoryName(string path)
         {
             if (string.IsNullOrEmpty(path)) return null;
 
-            return NormalizePathSeparators(Path.GetDirectoryName(path) ?? string.Empty);
+            return NormalizePath(Path.GetDirectoryName(path) ?? string.Empty);
         }
 
         public static string CombinePaths(params string[] paths)
@@ -131,35 +131,35 @@ namespace VT.IO
             if (paths == null || paths.Length == 0) return string.Empty;
 
             // Normalize each path and combine them
-            return NormalizePathSeparators(Path.Combine(paths));
+            return NormalizePath(Path.Combine(paths));
         }
 
         /// <summary>
         /// Checks if a file exists at the specified path.
         /// </summary>
-        public static bool FileExists(string path) => File.Exists(NormalizePathSeparators(path));
+        public static bool FileExists(string path) => File.Exists(NormalizePath(path));
 
         /// <summary>
         /// Creates a directory at the specified path if it does not exist.
         /// </summary>
         public static bool AssetFileExists(string path)
         {
-            return !AssetDatabase.IsValidFolder(NormalizePathSeparators(path))
-                && AssetDatabase.AssetPathExists(NormalizePathSeparators(path));
+            return !AssetDatabase.IsValidFolder(NormalizePath(path))
+                && AssetDatabase.AssetPathExists(NormalizePath(path));
         }
 
         /// <summary>
         /// Checks if a directory exists at the specified path.
         /// </summary>
-        public static bool DirectoryExists(string path) => Directory.Exists(NormalizePathSeparators(path));
+        public static bool DirectoryExists(string path) => Directory.Exists(NormalizePath(path));
 
         /// <summary>
         /// Creates a directory at the specified path if it does not exist.
         /// </summary>
         public static bool AssetDirectoryExists(string path)
         {
-            return AssetDatabase.IsValidFolder(NormalizePathSeparators(path))
-                && AssetDatabase.AssetPathExists(NormalizePathSeparators(path));
+            return AssetDatabase.IsValidFolder(NormalizePath(path))
+                && AssetDatabase.AssetPathExists(NormalizePath(path));
         }
 
         /// <summary>
@@ -167,7 +167,7 @@ namespace VT.IO
         /// </summary>
         public static string CreateDirectory(string path)
         {
-            var normalizedPath = NormalizePathSeparators(path);
+            var normalizedPath = NormalizePath(path);
             if (DirectoryExists(normalizedPath))
             {
                 Directory.CreateDirectory(normalizedPath);
@@ -192,7 +192,7 @@ namespace VT.IO
         public static string CreateAssetDirectory(string parentDir, string newFolderName)
         {
             var newFolderPath = Path.Combine(parentDir, newFolderName);
-            newFolderPath = NormalizePathSeparators(newFolderPath);
+            newFolderPath = NormalizePath(newFolderPath);
             if (!AssetDatabase.IsValidFolder(newFolderPath))
                 return AssetDatabase.CreateFolder(parentDir, newFolderName);
             return newFolderPath;
@@ -205,7 +205,7 @@ namespace VT.IO
         /// </summary>
         public static string CreateAssetDirectoryRecursive(string unityPath)
         {
-            var path = NormalizePathSeparators(unityPath);
+            var path = NormalizePath(unityPath);
 
             if (string.IsNullOrEmpty(path))
                 throw new ArgumentException("Path cannot be null or empty.", nameof(path));
@@ -238,8 +238,8 @@ namespace VT.IO
             if (string.IsNullOrEmpty(rootPath) || string.IsNullOrEmpty(fullPath))
                 return null;
 
-            rootPath = NormalizePathSeparators(Path.GetFullPath(rootPath));
-            fullPath = NormalizePathSeparators(Path.GetFullPath(fullPath));
+            rootPath = NormalizePath(Path.GetFullPath(rootPath));
+            fullPath = NormalizePath(Path.GetFullPath(fullPath));
 
             if (!fullPath.StartsWith(rootPath))
             {
@@ -279,10 +279,10 @@ namespace VT.IO
         public static string GetAbsolutePath(string rootPath, string relativePath)
         {
             if (string.IsNullOrEmpty(rootPath)) return null;
-            if (string.IsNullOrEmpty(relativePath)) return NormalizePathSeparators(rootPath);
+            if (string.IsNullOrEmpty(relativePath)) return NormalizePath(rootPath);
 
             string combined = Path.Combine(rootPath, relativePath);
-            return NormalizePathSeparators(Path.GetFullPath(combined));
+            return NormalizePath(Path.GetFullPath(combined));
         }
 
         /// <summary>
@@ -290,7 +290,7 @@ namespace VT.IO
         /// </summary>
         public static void DeleteFile(string path)
         {
-            var normalizedPath = NormalizePathSeparators(path);
+            var normalizedPath = NormalizePath(path);
             if (FileExists(normalizedPath))
             {
                 try
@@ -308,7 +308,7 @@ namespace VT.IO
         /// </summary>
         public static void DeleteDirectory(string path)
         {
-            var normalizedPath = NormalizePathSeparators(path);
+            var normalizedPath = NormalizePath(path);
             if (DirectoryExists(normalizedPath))
             {
                 Directory.Delete(normalizedPath, true);
@@ -338,7 +338,7 @@ namespace VT.IO
         {
             if (CanWriteToPath(path))
             {
-                var normalizedPath = NormalizePathSeparators(path);
+                var normalizedPath = NormalizePath(path);
                 File.WriteAllText(normalizedPath, content);
             }
             else
@@ -357,7 +357,7 @@ namespace VT.IO
         /// </summary>
         public static string ReadAllText(string path)
         {
-            var normalizedPath = NormalizePathSeparators(path);
+            var normalizedPath = NormalizePath(path);
             return File.Exists(normalizedPath) ? File.ReadAllText(normalizedPath) : null;
         }
 
@@ -366,7 +366,7 @@ namespace VT.IO
         /// </summary>
         public static void SaveBinary(string path, byte[] data)
         {
-            var normalizedPath = NormalizePathSeparators(path);
+            var normalizedPath = NormalizePath(path);
             File.WriteAllBytes(normalizedPath, data);
         }
 
@@ -375,7 +375,7 @@ namespace VT.IO
         /// </summary>
         public static byte[] LoadBinary(string path)
         {
-            var normalizedPath = NormalizePathSeparators(path);
+            var normalizedPath = NormalizePath(path);
             return File.Exists(normalizedPath) ? File.ReadAllBytes(normalizedPath) : null;
         }
 
@@ -384,7 +384,7 @@ namespace VT.IO
         /// </summary>
         public static void SaveJson<T>(string path, T data)
         {
-            var normalizedPath = NormalizePathSeparators(path);
+            var normalizedPath = NormalizePath(path);
             string json = JsonUtility.ToJson(data, prettyPrint: true);
             WriteAllText(normalizedPath, json);
         }
@@ -394,7 +394,7 @@ namespace VT.IO
         /// </summary>
         public static T LoadJson<T>(string path)
         {
-            var normalizedPath = NormalizePathSeparators(path);
+            var normalizedPath = NormalizePath(path);
             string json = ReadAllText(normalizedPath);
             return !string.IsNullOrEmpty(json) ? JsonUtility.FromJson<T>(json) : default;
         }
