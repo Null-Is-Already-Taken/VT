@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
 using VT.Editor.Utils;
 using VT.IO;
+using VT.Logger;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
@@ -11,27 +13,50 @@ namespace VT.Tools.EssentialAssetsImporter
     }
 
     [Serializable]
-    public class AssetEntry
+    public class AssetEntry : IEquatable<AssetEntry>
     {
-        public string FullPath => IOManager.CombinePaths(PathUtils.GetAssetStorePath(), path);
+        public AssetEntry(PackageSourceType sourceType, string absolutePath)
+        {
+            this.sourceType = sourceType;
+
+            switch (sourceType)
+            {
+                case PackageSourceType.LocalUnityPackage:
+                    this.absolutePath = PathUtils.ToAlias(absolutePath);
+                    relativePath = IOManager.GetRelativePath(PathUtils.GetAssetStorePath(), absolutePath);
+                    InternalLogger.Instance.LogDebug($"relativePath: {relativePath}");
+                    break;
+                case PackageSourceType.GitURL:
+                    this.absolutePath = absolutePath;
+                    relativePath = absolutePath;
+                    break;
+                default:
+                    this.absolutePath = string.Empty;
+                    relativePath = string.Empty;
+                    break;
+            }
+        }
+
+        public string FullPath => IOManager.CombinePaths(PathUtils.GetAssetStorePath(), relativePath);
 
         public PackageSourceType sourceType = PackageSourceType.LocalUnityPackage;
 
-        public string path;
+        public string absolutePath; // with path alias
+        public string relativePath;
 
         /// <summary>
         /// Returns a formatted summary of the package source, such as "Cysharp - UniTask".
         /// </summary>
         public override string ToString()
         {
-            if (string.IsNullOrEmpty(path))
+            if (string.IsNullOrEmpty(relativePath))
                 return string.Empty;
 
             if (sourceType == PackageSourceType.GitURL)
-                return EmbeddedIcons.Internet_Unicode + " " + ExtractGitSummary(path);
+                return EmbeddedIcons.Internet_Unicode + " " + ExtractGitSummary(relativePath);
 
             if (sourceType == PackageSourceType.LocalUnityPackage)
-                return EmbeddedIcons.Package_Unicode + " " + ExtractLocalSummary(path);
+                return EmbeddedIcons.Package_Unicode + " " + ExtractLocalSummary(relativePath);
 
             return string.Empty;
         }
@@ -87,6 +112,24 @@ namespace VT.Tools.EssentialAssetsImporter
             return string.IsNullOrEmpty(author) || string.IsNullOrEmpty(repoName)
                 ? gitURL
                 : $"{author} - {repoName}";
+        }
+
+        public bool Equals(AssetEntry other)
+        {
+            return sourceType == other.sourceType
+            && string.Equals(absolutePath, other.absolutePath, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(relativePath, other.relativePath, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public override bool Equals(object obj) => Equals(obj as AssetEntry);
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(
+                sourceType,
+                absolutePath?.ToLowerInvariant(),
+                relativePath?.ToLowerInvariant()
+            );
         }
     }
 }

@@ -27,8 +27,9 @@ namespace VT.Tools.EssentialAssetsImporter
         //--- View Events ---//
 
         public event Action OnLoadConfigRequested;
-        public event Action<int> OnLocateRequested;
+        public event Action<int, string> OnLocateRequested;
         public event Action<int> OnRemoveRequested;
+        public event Action OnSaveConfigToJSONRequested;
         public event Action<string> OnLoadConfigFromJSONRequested;
         public event Action<string> OnAddLocalRequested;
         public event Action<string> OnAddGitRequested;
@@ -66,6 +67,8 @@ namespace VT.Tools.EssentialAssetsImporter
         private const string addLocalButtonIcon = EmbeddedIcons.Package_Unicode;
         private const string addGlobalButtonIcon = EmbeddedIcons.Internet_Unicode;
         private const string locateButtonIcon = EmbeddedIcons.MagnifyingGlass_Unicode;
+        private const string saveButtonIcon = EmbeddedIcons.Save_Unicode;
+        private const string loadButtonIcon = EmbeddedIcons.Load_Unicode;
 
         private double lastAutoRefreshTime;
         private const double autoRefreshInterval = 15.0;
@@ -105,7 +108,7 @@ namespace VT.Tools.EssentialAssetsImporter
         {
             GetWindow<EssentialAssetsImporterView>("Essential Assets Importer").Show();
         }
-        
+
         //--- Lifecycle ---//
 
         private void OnEnable()
@@ -123,7 +126,7 @@ namespace VT.Tools.EssentialAssetsImporter
         {
             // Unsubscribe update
             EditorApplication.update -= AutoRefresh;
-            presenter.DisposeIfNeeded();
+            presenter?.DisposeIfNeeded();
         }
 
         //--- GUI Rendering ---//
@@ -144,22 +147,54 @@ namespace VT.Tools.EssentialAssetsImporter
         /// </summary>
         private void DrawConfigHeader()
         {
-            using (new EditorGUILayout.HorizontalScope("helpBox"))
+            using (new EditorGUILayout.VerticalScope("helpBox"))
             {
-                Label.Draw("Config Profiles", EditorStyles.boldLabel);
-                GUILayout.FlexibleSpace();
-                PageNavigator.Draw(
-                    currentIndex: currentConfigIndex,
-                    total: configList?.Count ?? 0,
-                    onPageChanged: OnSelectConfigRequested,
-                    label: "Profile"
-                );
-            }
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    Label.Draw("Config Profiles", EditorStyles.boldLabel);
+                    GUILayout.FlexibleSpace();
+                    PageNavigator.Draw(
+                        currentIndex: currentConfigIndex,
+                        total: configList?.Count ?? 0,
+                        onPageChanged: OnSelectConfigRequested,
+                        label: "Profile"
+                    );
+                }
 
-            // Display current AssetsConfig asset
-            using (new EditorGUI.DisabledGroupScope(true))
-            {
-                EditorGUILayout.ObjectField(config, typeof(AssetsConfig), false);
+                GUILayout.Space(spacing);
+
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    // Display current AssetsConfig asset
+                    using (new EditorGUI.DisabledGroupScope(true))
+                    {
+                        EditorGUILayout.ObjectField(config, typeof(AssetsConfig), false, GUILayout.ExpandWidth(expand: true));
+                    }
+
+                    // if (config.assetsEntries.Count > 0)
+                    // {
+                    //     Button.Draw(
+                    //         content: new GUIContent(saveButtonIcon, "Save config to JSON"),
+                    //         backgroundColor: Color.white,
+                    //         onClick: () => { OnSaveConfigToJSONRequested?.Invoke(); },
+                    //         style: ButtonStyles.Inline
+                    //     );
+
+                    //     Button.Draw(
+                    //         content: new GUIContent(loadButtonIcon, "Load config JSON"),
+                    //         backgroundColor: Color.white,
+                    //         onClick: () => {
+                    //             string absolutePath = EditorUtility.OpenFilePanel(
+                    //                 "Select UnityPackage",
+                    //                 PathUtils.GetAssetStorePath(),
+                    //                 "unitypackage"
+                    //             );
+                    //             OnLoadConfigFromJSONRequested?.Invoke(absolutePath);
+                    //         },
+                    //         style: ButtonStyles.Inline
+                    //     );
+                    // }
+                }
             }
         }
 
@@ -282,18 +317,28 @@ namespace VT.Tools.EssentialAssetsImporter
                 Label.DrawTruncatedLabel(
                     fullText: vm.Entry.ToString(),
                     textColor: exists ? Color.white : Color.red,
-                    tooltip: exists ? vm.Entry.path : $"Missing file: {vm.Entry.path}",
+                    tooltip: exists ? vm.Entry.relativePath : $"Missing file: {vm.Entry.relativePath}",
                     availableWidth: labelWidth,
-                    averageCharWidth: averageCharWidth
+                    averageCharWidth: averageCharWidth,
+                    options: GUILayout.ExpandWidth(expand: true)
                 );
-                GUILayout.FlexibleSpace();
+
                 if (!exists)
                     Button.Draw(
                         content: new GUIContent(locateButtonIcon, "Locate missing package"),
                         backgroundColor: Color.white,
-                        onClick: () => OnLocateRequested?.Invoke(currentPage * itemsPerPage + index),
+                        onClick: () =>
+                        {
+                            string absolutePath = EditorUtility.OpenFilePanel(
+                                "Locate UnityPackage",
+                                PathUtils.GetAssetStorePath(),
+                                "unitypackage"
+                            );
+                            OnLocateRequested?.Invoke(currentPage * itemsPerPage + index, absolutePath);
+                        },
                         style: ButtonStyles.Inline
                     );
+
                 Button.Draw(
                     content: new GUIContent(removeButtonIcon, "Remove package"),
                     backgroundColor: Color.white,

@@ -48,7 +48,6 @@ namespace VT.Tools.EssentialAssetsImporter
         /// </summary>
         public EssentialAssetsImporterModel()
         {
-            parentPath = PathUtils.GetAssetStorePath();
             fileExistenceCache = new();
 
             // Ensure the config folder exists
@@ -145,12 +144,19 @@ namespace VT.Tools.EssentialAssetsImporter
             fileExistenceCache.Clear();
         }
 
+        public void SaveConfigToJSON()
+        {
+            throw new NotImplementedException();
+            // config.SaveConfigToJSON(configFolderPath);
+        }
+
         public void LoadConfigFromJSON(string path)
         {
-            if (string.IsNullOrEmpty(path))
-                return;
+            throw new NotImplementedException();
+            // if (string.IsNullOrEmpty(path))
+            //     return;
 
-            config.LoadConfigFromJSON(path);
+            // config.LoadConfigFromJSON(path);
         }
 
         //--- Entry Management ---//
@@ -173,7 +179,7 @@ namespace VT.Tools.EssentialAssetsImporter
             config.assetsEntries ??= new List<AssetEntry>();
 
             bool exists = config.assetsEntries.Any(e =>
-                e.sourceType == entry.sourceType && e.path == entry.path
+                e.sourceType == entry.sourceType && e.relativePath == entry.relativePath
             );
 
             if (!exists)
@@ -207,16 +213,16 @@ namespace VT.Tools.EssentialAssetsImporter
         /// </summary>
         public void AddLocalEntry(string absolutePath)
         {
-            var relativePath = IOManager.GetRelativePath(ParentPath, absolutePath);
+            // var relativePath = IOManager.GetRelativePath(ParentPath, absolutePath);
 
-            if (string.IsNullOrEmpty(relativePath))
+            if (string.IsNullOrEmpty(absolutePath))
                 return;
 
             var entry = new AssetEntry
-            {
-                sourceType = PackageSourceType.LocalUnityPackage,
-                path = relativePath
-            };
+            (
+                sourceType: PackageSourceType.LocalUnityPackage,
+                absolutePath: absolutePath
+            );
             AddEntry(entry);
         }
 
@@ -234,37 +240,33 @@ namespace VT.Tools.EssentialAssetsImporter
                 return;
             }
 
-            if (Entries.Any(e => e.sourceType == PackageSourceType.GitURL && e.path == gitURL))
+            if (Entries.Any(e => e.sourceType == PackageSourceType.GitURL && e.relativePath == gitURL))
             {
                 InternalLogger.Instance.LogWarning("[Model] Duplicate Git URL.");
                 return;
             }
 
             var entry = new AssetEntry
-            {
-                sourceType = PackageSourceType.GitURL,
-                path = gitURL
-            };
+            (
+                sourceType: PackageSourceType.GitURL,
+                absolutePath: gitURL
+            );
             AddEntry(entry);
         }
 
         /// <summary>
         /// Update a missing local entry.
         /// </summary>
-        private bool LocateMissingEntry(AssetEntry entry, string selected)
+        private bool LocateMissingEntry(AssetEntry entry, string absolutePath)
         {
-            string relative = IOManager.GetRelativePath(ParentPath, selected);
-            if (string.IsNullOrEmpty(relative))
+            if (Entries.Any(e => e.Equals(entry)))
                 return false;
 
-            bool duplicate = Entries.Any(e =>
-                e != entry && e.sourceType == PackageSourceType.LocalUnityPackage && e.path == relative
+            entry = new AssetEntry
+            (
+                sourceType: PackageSourceType.LocalUnityPackage,
+                absolutePath: absolutePath
             );
-            if (duplicate)
-                return false;
-
-            entry.sourceType = PackageSourceType.LocalUnityPackage;
-            entry.path = relative;
             SaveConfig();
             return true;
         }
@@ -314,12 +316,12 @@ namespace VT.Tools.EssentialAssetsImporter
                     }
                     else if (e.sourceType == PackageSourceType.GitURL)
                     {
-                        await UPMClientWrapper.AddPackageAsync(e.path);
+                        await UPMClientWrapper.AddPackageAsync(e.relativePath);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[Model] Import failed for '{e.path}': {ex.Message}");
+                    Debug.LogError($"[Model] Import failed for '{e.relativePath}': {ex.Message}");
                 }
             }
             AssetDatabase.Refresh();
@@ -327,12 +329,13 @@ namespace VT.Tools.EssentialAssetsImporter
 
         //--- UI Handlers ---//
 
-        public void HandleLoadConfigFromJSON()
+        public void HandleSaveConfigToJSON()
         {
-            string path = EditorUtility.OpenFilePanel("Import Config", "", "json");
-            if (string.IsNullOrEmpty(path))
-                return;
+            SaveConfigToJSON();
+        }
 
+        public void HandleLoadConfigFromJSON(string path)
+        {
             LoadConfigFromJSON(path);
         }
 
@@ -354,16 +357,10 @@ namespace VT.Tools.EssentialAssetsImporter
             if (index < 0 || index >= Entries.Count)
                 return;
 
-            var entry = Entries[index];
-            string absolutePath = EditorUtility.OpenFilePanel(
-                "Locate UnityPackage",
-                ParentPath,
-                "unitypackage"
-            );
             if (string.IsNullOrEmpty(absolutePath))
                 return;
 
-            LocateMissingEntry(entry, absolutePath);
+            LocateMissingEntry(Entries[index], absolutePath);
         }
 
         public async Task HandleImportAsync()
@@ -374,8 +371,7 @@ namespace VT.Tools.EssentialAssetsImporter
         //--- Private Fields ---//
 
         private AssetsConfig config;
-        private readonly string parentPath;
-        private const string configFolderPath = "Assets/EssentialAssetsImporter/ConfigData";
+        private readonly string configFolderPath = IOManager.CombinePaths("Assets", "EssentialAssetsImporter", "ConfigData");
         private readonly Dictionary<string, bool> fileExistenceCache;
 
         //--- Private Helpers ---//

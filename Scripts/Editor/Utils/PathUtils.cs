@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using VT.IO;
 
@@ -36,22 +37,54 @@ namespace VT.Editor.Utils
             };
         }
 
+        public enum PathAlias
+        {
+            USER,
+            PROJECT,
+            TEMP,
+            ASSETS_STORE
+        }
+
+        private static readonly Dictionary<PathAlias, Func<string>> AliasToPath = new()
+        {
+            { PathAlias.USER, GetUserProfilePath },
+            { PathAlias.PROJECT, GetProjectPath },
+            { PathAlias.TEMP, IOManager.GetTempPath },
+            { PathAlias.ASSETS_STORE, GetAssetStorePath }
+        };
+
+        private static string GetAliasString(PathAlias alias) => $"${alias}$";
+
         public static string FromAlias(string path)
         {
-            return path
-                .Replace("$USER$", GetUserProfilePath())
-                .Replace("$PROJECT$", GetProjectPath())
-                .Replace("$TEMP$", IOManager.GetTempPath())
-                .Replace("$ASSETS_STORE$", GetAssetStorePath());
+            foreach (var kvp in AliasToPath)
+            {
+                string alias = GetAliasString(kvp.Key);
+                string realPath = kvp.Value();
+                path = path.Replace(alias, realPath);
+            }
+            return path;
         }
 
         public static string ToAlias(string path)
         {
-            return path
-                .Replace(GetUserProfilePath(), "$USER$")
-                .Replace(GetProjectPath(), "$PROJECT$")
-                .Replace(IOManager.GetTempPath(), "$TEMP$")
-                .Replace(GetAssetStorePath(), "$ASSETS_STORE$");
+            foreach (var kvp in AliasToPath)
+            {
+                string alias = GetAliasString(kvp.Key);
+                string realPath = kvp.Value();
+                path = path.Replace(realPath, alias);
+            }
+            return path;
+        }
+
+        public static bool IsAlias(string path)
+        {
+            foreach (PathAlias alias in Enum.GetValues(typeof(PathAlias)))
+            {
+                if (path.Contains(GetAliasString(alias)))
+                    return true;
+            }
+            return false;
         }
     }
 }

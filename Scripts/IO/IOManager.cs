@@ -205,14 +205,14 @@ namespace VT.IO
         /// </summary>
         public static string CreateAssetDirectoryRecursive(string unityPath)
         {
-            unityPath = NormalizePathSeparators(unityPath);
+            var path = NormalizePathSeparators(unityPath);
 
-            if (string.IsNullOrEmpty(unityPath))
-                throw new ArgumentException("Path cannot be null or empty.", nameof(unityPath));
+            if (string.IsNullOrEmpty(path))
+                throw new ArgumentException("Path cannot be null or empty.", nameof(path));
 
-            string[] parts = unityPath.Split('\\');
+            string[] parts = path.Split(Path.DirectorySeparatorChar);
             if (parts.Length == 0 || parts[0] != "Assets")
-                throw new ArgumentException($"Path ({unityPath}) must start with 'Assets/'", nameof(unityPath));
+                throw new ArgumentException($"Path ({path}) must start with 'Assets'", nameof(path));
 
             string currentPath = parts[0]; // "Assets"
 
@@ -315,13 +315,41 @@ namespace VT.IO
             }
         }
 
+        public static bool CanWriteToPath(string path)
+        {
+            try
+            {
+                string testFile = Path.Combine(path, "test.txt");
+                File.WriteAllText(testFile, "test");
+                File.Delete(testFile);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+
         /// <summary>
         /// Saves string content to a file at the given path.
         /// </summary>
         public static void WriteAllText(string path, string content)
         {
-            var normalizedPath = NormalizePathSeparators(path);
-            File.WriteAllText(normalizedPath, content);
+            if (CanWriteToPath(path))
+            {
+                var normalizedPath = NormalizePathSeparators(path);
+                File.WriteAllText(normalizedPath, content);
+            }
+            else
+            {
+                Debug.LogError("No permission to write to " + path);
+                EditorUtility.DisplayDialog("Permission Error",
+                    "Unity does not have permission to save in this location. " +
+                    "Please grant Full Disk Access in System Settings > Privacy & Security.",
+                    "OK");
+                return;
+            }
         }
 
         /// <summary>

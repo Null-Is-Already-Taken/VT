@@ -36,6 +36,8 @@ namespace VT.Editor.Utils
         public const string Gear_Unicode = "\U00002699";            // ⚙️
         public const string Hammer_Unicode = "\U0001F528";          // 🔨
         public const string Pencil_Unicode = "\U0000270F";          // ✏️
+        public const string Save_Unicode = "\U0001F4BE";            // 💾
+        public const string Load_Unicode = "\U0001F4C2";            // 📂
 
         // ────────────── Miscellaneous ──────────────
         public const string LightBulb_Unicode = "\U0001F4A1";       // 💡

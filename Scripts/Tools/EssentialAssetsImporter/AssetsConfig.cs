@@ -44,7 +44,7 @@ namespace VT.Tools.EssentialAssetsImporter
                     assetsEntries.Clear();
                     foreach (var entry in newConfig.assetsEntries)
                     {
-                        entry.path = PathUtils.FromAlias(entry.path); // resolve alias to absolute
+                        entry.relativePath = PathUtils.FromAlias(entry.relativePath); // resolve alias to absolute
                         assetsEntries.Add(entry);
                     }
                 }
@@ -60,17 +60,16 @@ namespace VT.Tools.EssentialAssetsImporter
             try
             {
                 // Clone and alias the paths
-                AssetsConfig configToSave = new AssetsConfig
-                {
-                    assetsEntries = assetsEntries
-                        .Select(entry => new AssetEntry
-                        {
-                            sourceType = entry.sourceType,
-                            path = PathUtils.ToAlias(entry.path)
-                        }).ToList()
-                };
+                AssetsConfig configToSave = CreateInstance<AssetsConfig>();
+                configToSave.assetsEntries = assetsEntries
+                        .Select(entry => new AssetEntry(
+                            sourceType: entry.sourceType,
+                            absolutePath: PathUtils.FromAlias(entry.absolutePath)
+                        ))
+                        .ToList();
 
                 string json = JsonUtility.ToJson(configToSave, true);
+
                 IOManager.WriteAllText(path, json);
 
                 Debug.Log("Config saved to: " + path);
@@ -80,7 +79,6 @@ namespace VT.Tools.EssentialAssetsImporter
                 Debug.LogError("Failed to save config: " + ex.Message);
             }
         }
-
     }
 }
 

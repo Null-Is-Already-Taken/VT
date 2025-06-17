@@ -25,7 +25,7 @@ namespace VT.Tools.EssentialAssetsImporter
         private const int pageSize = 5;
         private bool hasInit;
         private bool isDisposed;
-        
+
         //--- Constructor ---//
 
         /// <summary>
@@ -67,6 +67,7 @@ namespace VT.Tools.EssentialAssetsImporter
         {
             // Subscribe to view events
             view.OnLoadConfigRequested += Refresh;
+            view.OnSaveConfigToJSONRequested += HandleSaveConfigToJSON;
             view.OnLoadConfigFromJSONRequested += HandleLoadConfigFromJSON;
             view.OnAddLocalRequested += HandleAddLocal;
             view.OnAddGitRequested += HandleAddGit;
@@ -177,9 +178,9 @@ namespace VT.Tools.EssentialAssetsImporter
             Refresh();
         }
 
-        private void HandleLocate(int index)
+        private void HandleLocate(int index, string absolutePath)
         {
-            model.HandleLocate(index);
+            model.HandleLocate(index, absolutePath);
             Refresh();
         }
 
@@ -213,17 +214,14 @@ namespace VT.Tools.EssentialAssetsImporter
             Refresh();
         }
 
-        private void HandleLoadConfigFromJSON()
+        private void HandleSaveConfigToJSON()
         {
-            model.HandleLoadConfigFromJSON((path) =>
-            {
-                if (!string.IsNullOrEmpty(path))
-                {
-                    model.LoadConfigFromJSON(path);
-                    RefreshAllConfigs();
-                    Refresh();
-                }
-            });
+            model.HandleSaveConfigToJSON();
+        }
+
+        private void HandleLoadConfigFromJSON(string path)
+        {
+            model.HandleLoadConfigFromJSON(path);
         }
 
         private void HandleRefreshRequested()
