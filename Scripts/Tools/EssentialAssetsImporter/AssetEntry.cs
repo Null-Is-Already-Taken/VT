@@ -1,8 +1,8 @@
-﻿using Sirenix.Utilities;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using VT.Editor.Utils;
+using VT.Extensions;
 using VT.IO;
 using VT.Logger;
 
@@ -40,28 +40,6 @@ namespace VT.Tools.EssentialAssetsImporter
     [Serializable]
     public class AssetEntry : IEquatable<AssetEntry>
     {
-        //public AssetEntry(PackageSourceType sourceType, string absolutePath)
-        //{
-        //    this.sourceType = sourceType;
-
-        //    switch (sourceType)
-        //    {
-        //        case PackageSourceType.LocalUnityPackage:
-        //            RelativePath = IOManager.GetRelativePath(PathUtils.GetAssetStorePath(), absolutePath);
-        //            AliasPath = PathUtils.ToAlias(absolutePath);
-        //            InternalLogger.Instance.LogDebug($"FileExists test: {IOManager.FileExists(PathUtils.FromAlias(AliasPath))}");
-        //            break;
-        //        case PackageSourceType.GitURL:
-        //            RelativePath = absolutePath;
-        //            AliasPath = absolutePath;
-        //            break;
-        //        default:
-        //            RelativePath = string.Empty;
-        //            AliasPath = string.Empty;
-        //            break;
-        //    }
-        //}
-
         public static AssetEntry Create(PackageSourceType sourceType, string absolutePath)
         {
             var entry = new AssetEntry
