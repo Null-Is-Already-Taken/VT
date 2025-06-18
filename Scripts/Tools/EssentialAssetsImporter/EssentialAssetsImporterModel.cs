@@ -5,9 +5,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
+using VT.Editor.Extensions;
 using VT.Editor.Utils;
 using VT.IO;
 using VT.Logger;
+using VT.PackageManager;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
@@ -20,7 +22,7 @@ namespace VT.Tools.EssentialAssetsImporter
         //--- Public Properties ---//
 
         /// <summary>Currently loaded asset entries.</summary>
-        public List<AssetEntry> Entries => Config.assetsEntries;
+        public AssetEntryList Entries => Config.Entries;
 
         /// <summary>Base path for local asset store packages.</summary>
         //public string ParentPath => parentPath;
@@ -144,21 +146,6 @@ namespace VT.Tools.EssentialAssetsImporter
             fileExistenceCache.Clear();
         }
 
-        public void SaveConfigToJSON()
-        {
-            throw new NotImplementedException();
-            // config.SaveConfigToJSON(configFolderPath);
-        }
-
-        public void LoadConfigFromJSON(string path)
-        {
-            throw new NotImplementedException();
-            // if (string.IsNullOrEmpty(path))
-            //     return;
-
-            // config.LoadConfigFromJSON(path);
-        }
-
         //--- Entry Management ---//
 
         /// <summary>
@@ -176,16 +163,15 @@ namespace VT.Tools.EssentialAssetsImporter
             if (config == null)
                 LoadConfig();
 
-            config.assetsEntries ??= new List<AssetEntry>();
+            if (config.Entries == null)
+                config.Init();
 
-            bool exists = config.assetsEntries.Any(e =>
-                e.sourceType == entry.sourceType && e.RelativePath == entry.RelativePath
-            );
+            bool exists = config.Exists(entry);
 
             if (!exists)
             {
-                config.assetsEntries.Add(entry);
-                InternalLogger.Instance.LogDebug($"[Model] Entry added. Total now: {config.assetsEntries.Count}");
+                config.Entries.Add(entry);
+                InternalLogger.Instance.LogDebug($"[Model] Entry added. Total now: {config.Entries.Count}");
                 SaveConfig();
             }
             else
@@ -199,10 +185,10 @@ namespace VT.Tools.EssentialAssetsImporter
         /// </summary>
         public void RemoveEntry(AssetEntry entry)
         {
-            if (config?.assetsEntries == null)
+            if (config == null || config.Entries == null)
                 return;
 
-            if (config.assetsEntries.Remove(entry))
+            if (config.Entries.Remove(entry))
                 SaveConfig();
             else
                 InternalLogger.Instance.LogDebug($"[Model] Attempted remove of missing entry: {entry}");
@@ -238,17 +224,18 @@ namespace VT.Tools.EssentialAssetsImporter
                 return;
             }
 
-            if (Entries.Any(e => e.sourceType == PackageSourceType.GitURL && e.RelativePath == gitURL))
-            {
-                InternalLogger.Instance.LogWarning("[Model] Duplicate Git URL.");
-                return;
-            }
-
             var entry = new AssetEntry
             (
                 sourceType: PackageSourceType.GitURL,
                 absolutePath: gitURL
             );
+
+            if (config.Exists(entry))
+            {
+                InternalLogger.Instance.LogWarning("[Model] Duplicate Git URL.");
+                return;
+            }
+
             AddEntry(entry);
         }
 
@@ -300,7 +287,7 @@ namespace VT.Tools.EssentialAssetsImporter
         /// </summary>
         public async Task ImportAsync(AssetsConfig assetsConfig)
         {
-            var entries = assetsConfig.assetsEntries;
+            var entries = assetsConfig.Entries;
             int total = entries.Count;
             for (int i = 0; i < total; i++)
             {
@@ -325,16 +312,69 @@ namespace VT.Tools.EssentialAssetsImporter
             AssetDatabase.Refresh();
         }
 
+        public async Task HandleImport()
+        {
+            string registryPath = IOManager.CombinePaths(configFolderPath, "UnityPackageRegistry.json");
+            var registry = UnityPackageRegistry.Load(registryPath);
+
+            foreach (var entry in config.Entries.list)
+            {
+                if (entry.sourceType == PackageSourceType.LocalUnityPackage)
+                {
+                    string alias = PathUtils.ToAlias(entry.AbsolutePath);
+
+                    if (!registry.IsImported(alias))
+                    {
+                        if (IOManager.FileExists(entry.AbsolutePath))
+                        {
+                            AssetDatabase.ImportPackage(entry.AbsolutePath, false);
+                            registry.AddOrUpdate(alias);
+                            Debug.Log($"✅ Imported: {alias}");
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"⚠️ File not found: {alias}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.Log($"⏩ Skipped (already imported): {alias}");
+                    }
+                }
+                else if (entry.sourceType == PackageSourceType.GitURL)
+                {
+                    if (!await UPMClientWrapper.IsPackageInstalledAsync(entry.AbsolutePath))
+                    {
+                        await UPMClientWrapper.AddPackageAsync(entry.AbsolutePath);
+                        Debug.Log($"✅ Added UPM: {entry.AbsolutePath}");
+                    }
+                    else
+                    {
+                        Debug.Log($"⏩ Skipped UPM (already installed): {entry.AbsolutePath}");
+                    }
+                }
+            }
+
+            registry.Save(registryPath);
+            AssetDatabase.Refresh();
+        }
+
+
         //--- UI Handlers ---//
 
         public void HandleSaveConfigToJSON()
         {
-            SaveConfigToJSON();
+            var filePath = IOManager.CombinePaths(configFolderPath, "AssetsConfig.json");
+            string uniqueAssetPath = AssetDatabase.GenerateUniqueAssetPath(filePath);
+            IOManager.SaveJson(uniqueAssetPath, config.Entries, true);
+            AssetDatabase.Refresh();
         }
 
         public void HandleLoadConfigFromJSON(string path)
         {
-            LoadConfigFromJSON(path);
+            // should use something like this ScriptableObject.CreateInstance<AssetsConfig>();
+            var entries = IOManager.LoadJson<AssetEntryList>(path);
+            config.AssignEntries(entries);
         }
 
         public void HandleAddLocal(string absolutePath)

@@ -26,6 +26,9 @@ namespace VT.Tools.EssentialAssetsImporter
         private bool hasInit;
         private bool isDisposed;
 
+        private double lastAutoRefreshTime;
+        private const double autoRefreshInterval = 15.0;
+
         //--- Constructor ---//
 
         /// <summary>
@@ -55,6 +58,8 @@ namespace VT.Tools.EssentialAssetsImporter
                 RefreshAllConfigs();     // Populate config list
 
                 SubscribeViewEvents(view);     // hook up view events
+                lastAutoRefreshTime = EditorApplication.timeSinceStartup;
+                EditorApplication.update += AutoRefresh;
 
                 hasInit = true;
             }
@@ -112,11 +117,27 @@ namespace VT.Tools.EssentialAssetsImporter
         }
 
         /// <summary>
+        /// Automatically refreshes when the window is focused and interval elapsed.
+        /// </summary>
+        private void AutoRefresh()
+        {
+            if (EditorWindow.focusedWindow != view)
+                return;
+
+            double now = EditorApplication.timeSinceStartup;
+            if (now - lastAutoRefreshTime >= autoRefreshInterval)
+            {
+                lastAutoRefreshTime = now;
+                HandleRefreshRequested();
+            }
+        }
+
+        /// <summary>
         /// Constructs paginated AssetEntryViewModel list based on model entries.
         /// </summary>
         private List<AssetEntryViewModel> BuildEntryViewModels()
         {
-            var allEntries = model.Entries;
+            var allEntries = model.Entries.list;
             totalPages = Mathf.CeilToInt(allEntries.Count / (float)pageSize);
             currentPage = Mathf.Clamp(currentPage, 0, Mathf.Max(0, totalPages - 1));
 
@@ -141,6 +162,7 @@ namespace VT.Tools.EssentialAssetsImporter
             if (isDisposed) return;
 
             UnsubscribeViewEvents();
+            EditorApplication.update -= AutoRefresh;
 
             isDisposed = true;
         }
@@ -158,11 +180,6 @@ namespace VT.Tools.EssentialAssetsImporter
             view.OnPageChanged -= HandlePageChange;
             view.OnSelectConfigRequested -= HandleSelectConfig;
         }
-
-        /// <summary>
-        /// Helper to call Dispose() safely (from EditorWindow.OnDisable, etc.).
-        /// </summary>
-        public void DisposeIfNeeded() => Dispose();
 
         //--- Event Handlers ---//
 

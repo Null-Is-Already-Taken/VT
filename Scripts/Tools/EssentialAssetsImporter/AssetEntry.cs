@@ -1,4 +1,7 @@
-﻿using System;
+﻿using Sirenix.Utilities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using VT.Editor.Utils;
 using VT.IO;
 using VT.Logger;
@@ -12,6 +15,34 @@ namespace VT.Tools.EssentialAssetsImporter
     }
 
     [Serializable]
+    public class AssetEntryList
+    {
+        public List<AssetEntry> list = new();
+        public int Count => list?.Count ?? 0;
+        public void Clear() => list?.Clear();
+        public bool IsNullOrEmpty() => list.IsNullOrEmpty();
+
+        public void Add(AssetEntry entry) => list.Add(entry);
+        public bool Remove(AssetEntry entry) => list.Remove(entry);
+
+        internal bool Any(Func<object, bool> value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public AssetEntry this[int index]
+        {
+            get => list[index];
+            set => list[index] = value;
+        }
+
+        public bool Exists(AssetEntry entry)
+        {
+            return list.Any(e => e.Equals(entry));
+        }
+    }
+
+    [Serializable]
     public class AssetEntry : IEquatable<AssetEntry>
     {
         public AssetEntry(PackageSourceType sourceType, string absolutePath)
@@ -21,48 +52,43 @@ namespace VT.Tools.EssentialAssetsImporter
             switch (sourceType)
             {
                 case PackageSourceType.LocalUnityPackage:
-                    this.absolutePath = IOManager.NormalizePath(absolutePath);
-                    relativePath = IOManager.GetRelativePath(PathUtils.GetAssetStorePath(), absolutePath);
-                    aliasPath = PathUtils.ToAlias(absolutePath);
-                    InternalLogger.Instance.LogDebug($"FileExists test: {IOManager.FileExists(PathUtils.FromAlias(aliasPath))}");
+                    AbsolutePath = IOManager.NormalizePath(absolutePath);
+                    RelativePath = IOManager.GetRelativePath(PathUtils.GetAssetStorePath(), absolutePath);
+                    AliasPath = PathUtils.ToAlias(absolutePath);
+                    InternalLogger.Instance.LogDebug($"FileExists test: {IOManager.FileExists(PathUtils.FromAlias(AliasPath))}");
                     break;
                 case PackageSourceType.GitURL:
-                    this.absolutePath = absolutePath;
-                    relativePath = absolutePath;
-                    aliasPath = absolutePath;
+                    AbsolutePath = absolutePath;
+                    RelativePath = absolutePath;
+                    AliasPath = absolutePath;
                     break;
                 default:
-                    this.absolutePath = string.Empty;
-                    relativePath = string.Empty;
-                    aliasPath = string.Empty;
+                    AbsolutePath = string.Empty;
+                    RelativePath = string.Empty;
+                    AliasPath = string.Empty;
                     break;
             }
         }
 
         public PackageSourceType sourceType = PackageSourceType.LocalUnityPackage;
 
-        private string absolutePath;
-        public string AbsolutePath => absolutePath;
-
-        private string relativePath;
-        public string RelativePath => relativePath;
-
-        private string aliasPath;
-        public string AliasPath => aliasPath;
+        public string AbsolutePath;
+        public string RelativePath;
+        public string AliasPath;
 
         /// <summary>
         /// Returns a formatted summary of the package source, such as "Cysharp - UniTask".
         /// </summary>
         public override string ToString()
         {
-            if (string.IsNullOrEmpty(relativePath))
+            if (string.IsNullOrEmpty(RelativePath))
                 return string.Empty;
 
             if (sourceType == PackageSourceType.GitURL)
-                return EmbeddedIcons.Internet_Unicode + " " + ExtractGitSummary(relativePath);
+                return EmbeddedIcons.Internet_Unicode + " " + ExtractGitSummary(RelativePath);
 
             if (sourceType == PackageSourceType.LocalUnityPackage)
-                return EmbeddedIcons.Package_Unicode + " " + ExtractLocalSummary(relativePath);
+                return EmbeddedIcons.Package_Unicode + " " + ExtractLocalSummary(RelativePath);
 
             return string.Empty;
         }
@@ -123,8 +149,8 @@ namespace VT.Tools.EssentialAssetsImporter
         public bool Equals(AssetEntry other)
         {
             return sourceType == other.sourceType
-            && string.Equals(absolutePath, other.absolutePath, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(relativePath, other.relativePath, StringComparison.OrdinalIgnoreCase);
+            && string.Equals(AbsolutePath, other.AbsolutePath, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(RelativePath, other.RelativePath, StringComparison.OrdinalIgnoreCase);
         }
 
         public override bool Equals(object obj) => Equals(obj as AssetEntry);
@@ -133,8 +159,8 @@ namespace VT.Tools.EssentialAssetsImporter
         {
             return HashCode.Combine(
                 sourceType,
-                absolutePath?.ToLowerInvariant(),
-                relativePath?.ToLowerInvariant()
+                AbsolutePath?.ToLowerInvariant(),
+                RelativePath?.ToLowerInvariant()
             );
         }
     }

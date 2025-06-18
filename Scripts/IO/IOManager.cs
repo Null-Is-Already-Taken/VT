@@ -1,9 +1,11 @@
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+using VT.Logger;
 
 #if UNITY_EDITOR
 namespace VT.IO
@@ -66,100 +68,201 @@ namespace VT.IO
         /// </returns>
         public static string NormalizePath(string path)
         {
-            if (string.IsNullOrEmpty(path)) return null;
+            try
+            {
+                if (string.IsNullOrEmpty(path)) return null;
 
-            char sep = Path.DirectorySeparatorChar;
+                char sep = Path.DirectorySeparatorChar;
 
-            // Replace all slashes with the current platform's separator
-            string unified = path.Replace('\\', sep).Replace('/', sep);
+                // Replace all slashes with the current platform's separator
+                string unified = path.Replace('\\', sep).Replace('/', sep);
 
-            // Remove duplicate slashes (e.g., "//" or "\\")
-            return Regex.Replace(unified, $"{Regex.Escape(sep.ToString())}+", sep.ToString());
+                // Remove duplicate slashes (e.g., "//" or "\\")
+                return Regex.Replace(unified, $"{Regex.Escape(sep.ToString())}+", sep.ToString());
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error normalizing path '{path}': {ex.Message}");
+                return path; // Fallback to original path on error
+            }
         }
 
         public static string GetURIFileName(Uri uri)
         {
-            return Path.GetFileName(uri.LocalPath);
+            try
+            {
+                return Path.GetFileName(uri.LocalPath);
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error getting file name from URI '{uri}': {ex.Message}");
+                return null; // Fallback to null on error
+            }
         }
 
         public static string GetTempPath()
         {
-            return NormalizePath(Path.GetTempPath());
+            try
+            {
+                // Use the system's temporary path and normalize it
+                return NormalizePath(Path.GetTempPath());
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error getting temp path: {ex.Message}");
+                return null; // Fallback to null on error
+            }
         }
 
         public static string GetURIVersion(Uri uri)
         {
-            var segments = uri.AbsoluteUri.Split('/');
-            for (int i = 0; i < segments.Length - 1; i++)
-            {
-                if (segments[i].Equals("download", StringComparison.OrdinalIgnoreCase))
-                    return segments[i + 1];
+            try
+            { 
+                var segments = uri.AbsoluteUri.Split('/');
+                for (int i = 0; i < segments.Length - 1; i++)
+                {
+                    if (segments[i].Equals("download", StringComparison.OrdinalIgnoreCase))
+                        return segments[i + 1];
+                }
+                return "unknown";
             }
-            return "unknown";
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error getting version from URI '{uri}': {ex.Message}");
+                return null;
+            }
         }
 
         public static string GetURIPackageName(Uri uri)
         {
-            string fileName = GetURIFileName(uri);
-            string version = GetURIVersion(uri);
-            if (fileName.Contains(version))
-                return fileName
-                    .Replace(version, "")
-                    .Replace(".unitypackage", "")
-                    .TrimEnd('.');
-            return GetFileNameWithoutExtension(fileName);
+            try
+            {
+                string fileName = GetURIFileName(uri);
+                string version = GetURIVersion(uri);
+                if (fileName.Contains(version))
+                    return fileName
+                        .Replace(version, "")
+                        .Replace(".unitypackage", "")
+                        .TrimEnd('.');
+                return GetFileNameWithoutExtension(fileName);
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error getting package name from URI '{uri}': {ex.Message}");
+                return null; // Fallback to null on error
+            }
         }
 
         public static string GetFileNameWithoutExtension(string path)
         {
-            if (string.IsNullOrEmpty(path)) return null;
+            try
+            {
+                if (string.IsNullOrEmpty(path)) return null;
 
-            // Normalize the path and get the file name without extension
-            string fileName = Path.GetFileNameWithoutExtension(path);
-            return NormalizePath(fileName);
+                // Normalize the path and get the file name without extension
+                string fileName = Path.GetFileNameWithoutExtension(path);
+                return NormalizePath(fileName);
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error getting file name without extension from '{path}': {ex.Message}");
+                return null; // Fallback to null on error
+            }
         }
 
         public static string GetDirectoryName(string path)
         {
-            if (string.IsNullOrEmpty(path)) return null;
-
-            return NormalizePath(Path.GetDirectoryName(path) ?? string.Empty);
+            try
+            {
+                if (string.IsNullOrEmpty(path)) return null;
+                return NormalizePath(Path.GetDirectoryName(path) ?? string.Empty);
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error getting directory name from '{path}': {ex.Message}");
+                return null; // Fallback to null on error
+            }
         }
 
         public static string CombinePaths(params string[] paths)
         {
-            if (paths == null || paths.Length == 0) return string.Empty;
-
-            // Normalize each path and combine them
-            return NormalizePath(Path.Combine(paths));
+            try
+            { 
+                if (paths == null || paths.Length == 0) return string.Empty;
+                // Normalize each path and combine them
+                return NormalizePath(Path.Combine(paths));
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error combining paths '{string.Join(", ", paths)}': {ex.Message}");
+                return string.Empty; // Fallback to empty string on error
+            }
         }
 
         /// <summary>
         /// Checks if a file exists at the specified path.
         /// </summary>
-        public static bool FileExists(string path) => File.Exists(NormalizePath(path));
+        public static bool FileExists(string path)
+        {
+            try
+            { 
+                return File.Exists(NormalizePath(path));
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error checking file existence at '{path}': {ex.Message}");
+                return false; // Fallback to false on error
+            }
+        }
 
         /// <summary>
         /// Creates a directory at the specified path if it does not exist.
         /// </summary>
         public static bool AssetFileExists(string path)
         {
-            return !AssetDatabase.IsValidFolder(NormalizePath(path))
-                && AssetDatabase.AssetPathExists(NormalizePath(path));
+            try
+            {
+                return !AssetDatabase.IsValidFolder(NormalizePath(path))
+                    && AssetDatabase.AssetPathExists(NormalizePath(path));
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error checking asset file existence at '{path}': {ex.Message}");
+                return false; // Fallback to false on error
+            }
         }
 
         /// <summary>
         /// Checks if a directory exists at the specified path.
         /// </summary>
-        public static bool DirectoryExists(string path) => Directory.Exists(NormalizePath(path));
+        public static bool DirectoryExists(string path)
+        {
+            try
+            {
+                return Directory.Exists(NormalizePath(path));
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error checking directory existence at '{path}': {ex.Message}");
+                return false; // Fallback to false on error
+            }
+        }
 
         /// <summary>
         /// Creates a directory at the specified path if it does not exist.
         /// </summary>
         public static bool AssetDirectoryExists(string path)
         {
-            return AssetDatabase.IsValidFolder(NormalizePath(path))
-                && AssetDatabase.AssetPathExists(NormalizePath(path));
+            try
+            {
+                return AssetDatabase.IsValidFolder(NormalizePath(path))
+                    && AssetDatabase.AssetPathExists(NormalizePath(path));
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error checking asset directory existence at '{path}': {ex.Message}");
+                return false; // Fallback to false on error
+            }
         }
 
         /// <summary>
@@ -167,35 +270,40 @@ namespace VT.IO
         /// </summary>
         public static string CreateDirectory(string path)
         {
-            var normalizedPath = NormalizePath(path);
-            if (DirectoryExists(normalizedPath))
+            try
             {
-                Directory.CreateDirectory(normalizedPath);
+                var normalizedPath = NormalizePath(path);
+                if (DirectoryExists(normalizedPath))
+                {
+                    Directory.CreateDirectory(normalizedPath);
+                }
+                return normalizedPath;
             }
-            return normalizedPath;
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error creating directory at '{path}': {ex.Message}");
+                return null; // Fallback to null on error
+            }
         }
-
-        ///// <summary>
-        ///// Creates a directory at the specified path if it does not exist.
-        ///// </summary>
-        //public static void CreateAssetDirectory(string parentDir, string newFolderName)
-        //{
-        //    var newFolderPath = Path.Combine(parentDir, newFolderName);
-        //    newFolderPath = NormalizePathSeparators(newFolderPath);
-        //    if (!AssetDatabase.IsValidFolder(newFolderPath))
-        //        AssetDatabase.CreateFolder(parentDir, newFolderName);
-        //}
 
         /// <summary>
         /// Creates a directory at the specified path if it does not exist.
         /// </summary>
         public static string CreateAssetDirectory(string parentDir, string newFolderName)
         {
-            var newFolderPath = Path.Combine(parentDir, newFolderName);
-            newFolderPath = NormalizePath(newFolderPath);
-            if (!AssetDatabase.IsValidFolder(newFolderPath))
-                return AssetDatabase.CreateFolder(parentDir, newFolderName);
-            return newFolderPath;
+            try
+            {
+                var newFolderPath = Path.Combine(parentDir, newFolderName);
+                newFolderPath = NormalizePath(newFolderPath);
+                if (!AssetDatabase.IsValidFolder(newFolderPath))
+                    return AssetDatabase.CreateFolder(parentDir, newFolderName);
+                return newFolderPath;
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error creating asset directory '{newFolderName}' in '{parentDir}': {ex.Message}");
+                return null; // Fallback to null on error
+            }
         }
 
         /// <summary>
@@ -205,28 +313,36 @@ namespace VT.IO
         /// </summary>
         public static string CreateAssetDirectoryRecursive(string unityPath)
         {
-            var path = NormalizePath(unityPath);
-
-            if (string.IsNullOrEmpty(path))
-                throw new ArgumentException("Path cannot be null or empty.", nameof(path));
-
-            string[] parts = path.Split(Path.DirectorySeparatorChar);
-            if (parts.Length == 0 || parts[0] != "Assets")
-                throw new ArgumentException($"Path ({path}) must start with 'Assets'", nameof(path));
-
-            string currentPath = parts[0]; // "Assets"
-
-            for (int i = 1; i < parts.Length; i++)
+            try
             {
-                string nextPath = CombinePaths(currentPath, parts[i]);
-                if (!AssetDatabase.IsValidFolder(nextPath))
-                {
-                    AssetDatabase.CreateFolder(currentPath, parts[i]);
-                }
-                currentPath = nextPath;
-            }
+                var path = NormalizePath(unityPath);
 
-            return currentPath;
+                if (string.IsNullOrEmpty(path))
+                    throw new ArgumentException("Path cannot be null or empty.", nameof(path));
+
+                string[] parts = path.Split(Path.DirectorySeparatorChar);
+                if (parts.Length == 0 || parts[0] != "Assets")
+                    throw new ArgumentException($"Path ({path}) must start with 'Assets'", nameof(path));
+
+                string currentPath = parts[0]; // "Assets"
+
+                for (int i = 1; i < parts.Length; i++)
+                {
+                    string nextPath = CombinePaths(currentPath, parts[i]);
+                    if (!AssetDatabase.IsValidFolder(nextPath))
+                    {
+                        AssetDatabase.CreateFolder(currentPath, parts[i]);
+                    }
+                    currentPath = nextPath;
+                }
+
+                return currentPath;
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error creating asset directory '{unityPath}': {ex.Message}");
+                return null; // Fallback to null on error
+            }
         }
 
         /// <summary>
@@ -235,20 +351,28 @@ namespace VT.IO
         /// </summary>
         public static string GetRelativePath(string rootPath, string fullPath)
         {
-            if (string.IsNullOrEmpty(rootPath) || string.IsNullOrEmpty(fullPath))
-                return null;
-
-            rootPath = NormalizePath(Path.GetFullPath(rootPath));
-            fullPath = NormalizePath(Path.GetFullPath(fullPath));
-
-            if (!fullPath.StartsWith(rootPath))
+            try
             {
-                Debug.LogWarning($"GetRelativePath: '{fullPath}' is not under root '{rootPath}'");
-                return fullPath; // fallback to full path
-            }
+                if (string.IsNullOrEmpty(rootPath) || string.IsNullOrEmpty(fullPath))
+                    return null;
 
-            string relative = fullPath.Substring(rootPath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            return relative;
+                rootPath = NormalizePath(Path.GetFullPath(rootPath));
+                fullPath = NormalizePath(Path.GetFullPath(fullPath));
+
+                if (!fullPath.StartsWith(rootPath))
+                {
+                    Debug.LogWarning($"GetRelativePath: '{fullPath}' is not under root '{rootPath}'");
+                    return fullPath; // fallback to full path
+                }
+
+                string relative = fullPath[rootPath.Length..].TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                return relative;
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error getting relative path from '{fullPath}' with root '{rootPath}': {ex.Message}");
+                return null; // Fallback to null on error
+            }
         }
 
         /// <summary>
@@ -257,20 +381,30 @@ namespace VT.IO
         /// </summary>
         public static string GetUnityRelativePath(string absolutePath)
         {
-            if (string.IsNullOrEmpty(absolutePath)) return null;
-
-            string projectPath = Path.GetFullPath(Application.dataPath).Replace("\\", "/");
-            projectPath = projectPath.Substring(0, projectPath.Length - "Assets".Length); // Project root
-
-            string normalizedFullPath = Path.GetFullPath(absolutePath).Replace("\\", "/");
-
-            if (!normalizedFullPath.StartsWith(projectPath))
+            try
             {
-                Debug.LogWarning($"Path '{normalizedFullPath}' is outside the Unity project.");
-                return null;
-            }
+                if (string.IsNullOrEmpty(absolutePath)) return null;
 
-            return normalizedFullPath.Substring(projectPath.Length);
+                string projectPath = Path.GetFullPath(Application.dataPath).Replace("\\", "/");
+
+                //projectPath = projectPath.Substring(0, projectPath.Length - "Assets".Length); // Project root
+                projectPath = projectPath[..^"Assets".Length]; // Project root
+
+                string normalizedFullPath = Path.GetFullPath(absolutePath).Replace("\\", "/");
+
+                if (!normalizedFullPath.StartsWith(projectPath))
+                {
+                    Debug.LogWarning($"Path '{normalizedFullPath}' is outside the Unity project.");
+                    return null;
+                }
+
+                return normalizedFullPath[projectPath.Length..];
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error getting Unity-relative path from '{absolutePath}': {ex.Message}");
+                return null; // Fallback to null on error
+            }
         }
 
         /// <summary>
@@ -278,11 +412,19 @@ namespace VT.IO
         /// </summary>
         public static string GetAbsolutePath(string rootPath, string relativePath)
         {
-            if (string.IsNullOrEmpty(rootPath)) return null;
-            if (string.IsNullOrEmpty(relativePath)) return NormalizePath(rootPath);
+            try
+            {
+                if (string.IsNullOrEmpty(rootPath)) return null;
+                if (string.IsNullOrEmpty(relativePath)) return NormalizePath(rootPath);
 
-            string combined = Path.Combine(rootPath, relativePath);
-            return NormalizePath(Path.GetFullPath(combined));
+                string combined = Path.Combine(rootPath, relativePath);
+                return NormalizePath(Path.GetFullPath(combined));
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Error getting absolute path from '{rootPath}' and '{relativePath}': {ex.Message}");
+                return null; // Fallback to null on error
+            }
         }
 
         /// <summary>
@@ -290,16 +432,17 @@ namespace VT.IO
         /// </summary>
         public static void DeleteFile(string path)
         {
-            var normalizedPath = NormalizePath(path);
-            if (FileExists(normalizedPath))
+            try
             {
-                try
+                var normalizedPath = NormalizePath(path);
+                if (FileExists(normalizedPath))
                 {
                     File.Delete(normalizedPath);
                 }
-                catch (IOException)
-                {
-                }
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Unexpected error deleting file '{path}': {ex.Message}");
             }
         }
 
@@ -308,47 +451,36 @@ namespace VT.IO
         /// </summary>
         public static void DeleteDirectory(string path)
         {
-            var normalizedPath = NormalizePath(path);
-            if (DirectoryExists(normalizedPath))
-            {
-                Directory.Delete(normalizedPath, true);
-            }
-        }
-
-        public static bool CanWriteToPath(string path)
-        {
             try
             {
-                string testFile = Path.Combine(path, "test.txt");
-                File.WriteAllText(testFile, "test");
-                File.Delete(testFile);
-                return true;
+                var normalizedPath = NormalizePath(path);
+                if (DirectoryExists(normalizedPath))
+                {
+                    Directory.Delete(normalizedPath, true);
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                InternalLogger.Instance.LogError($"Unexpected error deleting directory '{path}': {ex.Message}");
             }
         }
-
 
         /// <summary>
         /// Saves string content to a file at the given path.
         /// </summary>
         public static void WriteAllText(string path, string content)
         {
-            if (CanWriteToPath(path))
+            try
             {
                 var normalizedPath = NormalizePath(path);
-                File.WriteAllText(normalizedPath, content);
+                if (!string.IsNullOrEmpty(content))
+                {
+                    File.WriteAllText(normalizedPath, content);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Debug.LogError("No permission to write to " + path);
-                EditorUtility.DisplayDialog("Permission Error",
-                    "Unity does not have permission to save in this location. " +
-                    "Please grant Full Disk Access in System Settings > Privacy & Security.",
-                    "OK");
-                return;
+                InternalLogger.Instance.LogError($"Unexpected error writing to file '{path}': {ex.Message}");
             }
         }
 
@@ -357,8 +489,16 @@ namespace VT.IO
         /// </summary>
         public static string ReadAllText(string path)
         {
-            var normalizedPath = NormalizePath(path);
-            return File.Exists(normalizedPath) ? File.ReadAllText(normalizedPath) : null;
+            try
+            {
+                var normalizedPath = NormalizePath(path);
+                return FileExists(normalizedPath) ? File.ReadAllText(normalizedPath) : null;
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Unexpected error reading from file '{path}': {ex.Message}");
+                return null; // Fallback to null on error
+            }
         }
 
         /// <summary>
@@ -366,8 +506,19 @@ namespace VT.IO
         /// </summary>
         public static void SaveBinary(string path, byte[] data)
         {
-            var normalizedPath = NormalizePath(path);
-            File.WriteAllBytes(normalizedPath, data);
+            try
+            {
+                var normalizedPath = NormalizePath(path);
+
+                if (data != null && data.Length > 0)
+                {
+                    File.WriteAllBytes(normalizedPath, data);
+                }
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Unexpected error writing binary data to file '{path}': {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -375,28 +526,51 @@ namespace VT.IO
         /// </summary>
         public static byte[] LoadBinary(string path)
         {
-            var normalizedPath = NormalizePath(path);
-            return File.Exists(normalizedPath) ? File.ReadAllBytes(normalizedPath) : null;
+            try
+            {
+                var normalizedPath = NormalizePath(path);
+                return FileExists(normalizedPath) ? File.ReadAllBytes(normalizedPath) : null;
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Unexpected error reading binary data from file '{path}': {ex.Message}");
+                return null; // Fallback to null on error
+            }
         }
 
         /// <summary>
-        /// Serializes an object to JSON and saves it to the given path.
+        /// Serializes an object to JSON and saves it to the given path using Newtonsoft.Json.
         /// </summary>
-        public static void SaveJson<T>(string path, T data)
+        public static void SaveJson<T>(string path, T data, bool prettyPrint = true)
         {
-            var normalizedPath = NormalizePath(path);
-            string json = JsonUtility.ToJson(data, prettyPrint: true);
-            WriteAllText(normalizedPath, json);
+            try
+            {
+                var normalizedPath = NormalizePath(path);
+                string json = JsonConvert.SerializeObject(data, prettyPrint ? Formatting.Indented : Formatting.None);
+                WriteAllText(normalizedPath, json);
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Unexpected error saving JSON to file '{path}': {ex.Message}");
+            }
         }
 
         /// <summary>
-        /// Loads JSON from a file and deserializes it into an object of type T.
+        /// Loads JSON from a file and deserializes it into an object of type T using Newtonsoft.Json.
         /// </summary>
         public static T LoadJson<T>(string path)
         {
-            var normalizedPath = NormalizePath(path);
-            string json = ReadAllText(normalizedPath);
-            return !string.IsNullOrEmpty(json) ? JsonUtility.FromJson<T>(json) : default;
+            try
+            {
+                var normalizedPath = NormalizePath(path);
+                string json = ReadAllText(normalizedPath);
+                return !string.IsNullOrEmpty(json) ? JsonConvert.DeserializeObject<T>(json) : default;
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"Unexpected error loading JSON from file '{path}': {ex.Message}");
+                return default; // Fallback to default value on error
+            }
         }
     }
 }

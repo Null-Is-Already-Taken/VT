@@ -31,18 +31,22 @@ namespace VT.Tools.Experiments
             EditorGUILayout.Space();
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("List Installed"))   ListInstalled();
-                if (GUILayout.Button("Search Remote"))    SearchRemote();
+                if (GUILayout.Button("List Installed")) ListInstalled();
+                if (GUILayout.Button("Search Remote")) SearchRemote();
             }
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Add Package"))      AddPackage();
-                if (GUILayout.Button("Remove Package"))   RemovePackage();
+                if (GUILayout.Button("Add Package")) AddPackage();
+                if (GUILayout.Button("Remove Package")) RemovePackage();
             }
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Embed Package"))    EmbedPackage();
-                if (GUILayout.Button("Get Dependencies"))    GetDependencies();
+                if (GUILayout.Button("Embed Package")) EmbedPackage();
+                if (GUILayout.Button("Get Dependencies")) GetDependencies();
+            }
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Check Package Is Installed")) CheckIsInstalled();
             }
 
             EditorGUILayout.Space();
@@ -63,6 +67,7 @@ namespace VT.Tools.Experiments
                 if (GUILayout.Button("Clear Log"))
                 {
                     _log = "";
+                    
                 }
             }
         }
@@ -84,6 +89,7 @@ namespace VT.Tools.Experiments
                 Append($"✔️ {list.Length} packages installed:");
                 foreach (var p in list)
                     Append($"  • {p.name}@{p.version}");
+                
             }
             catch (Exception e)
             {
@@ -102,6 +108,7 @@ namespace VT.Tools.Experiments
                 Append($"✔️ {list.Length} matches:");
                 foreach (var p in list)
                     Append($"  • {p.name}@{p.version}");
+                
             }
             catch (Exception e)
             {
@@ -118,6 +125,7 @@ namespace VT.Tools.Experiments
             {
                 var pkgId = await UPMClientWrapper.AddPackageAsync(id);
                 Append($"✔️ Added: {pkgId}");
+                
             }
             catch (Exception e)
             {
@@ -134,6 +142,7 @@ namespace VT.Tools.Experiments
             {
                 var name = await UPMClientWrapper.RemovePackageAsync(pk);
                 Append($"✔️ Removed: {name}");
+                
             }
             catch (Exception e)
             {
@@ -150,6 +159,7 @@ namespace VT.Tools.Experiments
             {
                 var name = await UPMClientWrapper.EmbedPackageAsync(pk);
                 Append($"✔️ Embedded: {name}");
+                
             }
             catch (Exception e)
             {
@@ -168,6 +178,24 @@ namespace VT.Tools.Experiments
                 Append($"✔️ {deps.Length} dependencies:");
                 foreach (var d in deps)
                     Append($"  • {d.name}@{d.version}");
+                
+            }
+            catch (Exception e)
+            {
+                Append($"❌ Error: {e.Message}");
+            }
+        }
+
+        private async void CheckIsInstalled()
+        {
+            var id = _identifier.Trim();
+
+            Append($"⏳ Checking if package '{id}' is installed...");
+            try
+            {
+                var ins = await UPMClientWrapper.IsPackageInstalledAsync(id);
+                Append($"✔️ Installed: {ins}");
+                
             }
             catch (Exception e)
             {

@@ -21,7 +21,7 @@ namespace VT.Editor.Utils
 
                 if (req.Status == StatusCode.Success)
                     tcs.SetResult(req.Result);
-                else
+                else if (req.Status >= StatusCode.Failure)
                     tcs.SetException(new Exception(req.Error.message));
             }
 
@@ -40,7 +40,7 @@ namespace VT.Editor.Utils
 
                 if (req.Status == StatusCode.Success)
                     tcs.SetResult(extractor());
-                else
+                else if (req.Status >= StatusCode.Failure)
                     tcs.SetException(new Exception(req.Error.message));
             }
 
@@ -96,6 +96,39 @@ namespace VT.Editor.Utils
 
             Traverse(root);
             return result.ToArray();
+        }
+
+        public static async Task<bool> IsPackageInstalledAsync(string identifier)
+        {
+            var installed = await ListInstalledAsync();
+
+            // Try splitting identifier to check for version
+            string name = identifier;
+            string version = null;
+
+            int atIndex = identifier.IndexOf('@');
+            if (atIndex >= 0)
+            {
+                name = identifier[..atIndex];
+                version = identifier[(atIndex + 1)..];
+            }
+
+            return installed.Any(pkg =>
+            {
+                bool nameMatch = string.Equals(pkg.name, name, StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(pkg.packageId, identifier, StringComparison.OrdinalIgnoreCase) ||
+                                 identifier.Contains(pkg.name, StringComparison.OrdinalIgnoreCase);
+
+                if (!nameMatch) return false;
+
+                // If version was specified, check it
+                if (!string.IsNullOrEmpty(version))
+                {
+                    return string.Equals(pkg.version, version, StringComparison.OrdinalIgnoreCase);
+                }
+
+                return true; // Name matches and no version constraint
+            });
         }
     }
 }

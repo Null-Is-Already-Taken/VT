@@ -70,9 +70,6 @@ namespace VT.Tools.EssentialAssetsImporter
         private const string saveButtonIcon = EmbeddedIcons.Save_Unicode;
         private const string loadButtonIcon = EmbeddedIcons.Load_Unicode;
 
-        private double lastAutoRefreshTime;
-        private const double autoRefreshInterval = 15.0;
-
         public void UpdateConfigList(List<AssetsConfig> configList)
         {
             this.configList = configList;
@@ -116,17 +113,11 @@ namespace VT.Tools.EssentialAssetsImporter
             // Ensure model & presenter survive domain reloads
             model ??= new EssentialAssetsImporterModel();
             presenter ??= new EssentialAssetsImporterPresenter(this, model);
-
-            // Start auto-refresh timer
-            lastAutoRefreshTime = EditorApplication.timeSinceStartup;
-            EditorApplication.update += AutoRefresh;
         }
 
         private void OnDisable()
         {
-            // Unsubscribe update
-            EditorApplication.update -= AutoRefresh;
-            presenter?.DisposeIfNeeded();
+            presenter?.Dispose();
         }
 
         //--- GUI Rendering ---//
@@ -171,7 +162,7 @@ namespace VT.Tools.EssentialAssetsImporter
                         EditorGUILayout.ObjectField(config, typeof(AssetsConfig), false, GUILayout.ExpandWidth(expand: true));
                     }
 
-                     if (config.assetsEntries.Count > 0)
+                    if (config.Entries.Count > 0)
                     {
                         Button.Draw(
                             content: new GUIContent(saveButtonIcon, "Save config to JSON"),
@@ -179,22 +170,23 @@ namespace VT.Tools.EssentialAssetsImporter
                             onClick: () => { OnSaveConfigToJSONRequested?.Invoke(); },
                             style: ButtonStyles.Inline
                         );
-
-                        Button.Draw(
-                            content: new GUIContent(loadButtonIcon, "Load config JSON"),
-                            backgroundColor: Color.white,
-                            onClick: () =>
-                            {
-                                string absolutePath = EditorUtility.OpenFilePanel(
-                                    "Select UnityPackage",
-                                    PathUtils.GetAssetStorePath(),
-                                    "unitypackage"
-                                );
-                                OnLoadConfigFromJSONRequested?.Invoke(absolutePath);
-                            },
-                            style: ButtonStyles.Inline
-                        );
                     }
+
+                    Button.Draw(
+                        content: new GUIContent(loadButtonIcon, "Load config JSON"),
+                        backgroundColor: Color.white,
+                        onClick: () =>
+                        {
+                            string absolutePath = EditorUtility.OpenFilePanel(
+                                "Select UnityPackage",
+                                PathUtils.GetProjectPath(),
+                                "json"
+                            );
+                            OnLoadConfigFromJSONRequested?.Invoke(absolutePath);
+                            OnRefreshRequested?.Invoke();
+                        },
+                        style: ButtonStyles.Inline
+                    );
                 }
             }
         }
@@ -391,22 +383,6 @@ namespace VT.Tools.EssentialAssetsImporter
                     style: null,
                     GUILayout.Height(32)
                 );
-            }
-        }
-
-        /// <summary>
-        /// Automatically refreshes when the window is focused and interval elapsed.
-        /// </summary>
-        private void AutoRefresh()
-        {
-            if (focusedWindow != this)
-                return;
-
-            double now = EditorApplication.timeSinceStartup;
-            if (now - lastAutoRefreshTime >= autoRefreshInterval)
-            {
-                lastAutoRefreshTime = now;
-                OnRefreshRequested?.Invoke();
             }
         }
     }

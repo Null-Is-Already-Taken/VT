@@ -1,17 +1,6 @@
 #if UNITY_EDITOR
-
-#if ODIN_INSPECTOR
-using Sirenix.OdinInspector;
-using System;
-
-#endif
-
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using UnityEngine;
-using VT.Editor.Utils;
-using VT.IO;
 using VT.Logger;
 
 namespace VT.Tools.EssentialAssetsImporter
@@ -19,65 +8,40 @@ namespace VT.Tools.EssentialAssetsImporter
     [CreateAssetMenu(fileName = "New Assets Config", menuName = "Essential Assets Importer/Assets Config")]
     public class AssetsConfig : ScriptableObject
     {
-#if ODIN_INSPECTOR
-        [BoxGroup("Entries")]
-        [TableList]
-        [HideLabel]
-#endif
-        public List<AssetEntry> assetsEntries = new();
+        [SerializeField]
+        private AssetEntryList entries;
 
-        public static AssetsConfig LoadFromJson(string path)
-        {
-            if (!File.Exists(path)) throw new FileNotFoundException("Config not found: " + path);
-            string json = File.ReadAllText(path);
-            return JsonUtility.FromJson<AssetsConfig>(json);
-        }
+        public AssetEntryList Entries => entries;
 
-        public void LoadConfigFromJSON(string path)
+        public void Init()
         {
-            if (!string.IsNullOrEmpty(path))
+            if (entries == null)
             {
-                try
-                {
-                    AssetsConfig newConfig = LoadFromJson(path);
-
-                    assetsEntries.Clear();
-                    //foreach (var entry in newConfig.assetsEntries)
-                    //{
-                    //    entry.RelativePath = PathUtils.FromAlias(entry.RelativePath); // resolve alias to absolute
-                    //    assetsEntries.Add(entry);
-                    //}
-                }
-                catch (Exception ex)
-                {
-                    InternalLogger.Instance.LogError("Failed to load config: " + ex.Message);
-                }
+                entries = new AssetEntryList();
+            }
+            else
+            {
+                entries.Clear();
             }
         }
 
-        public void SaveConfigToJSON(string path)
+        public void AssignEntries(AssetEntryList entries)
         {
-            try
+            if (entries == null || entries.Count == 0)
             {
-                // Clone and alias the paths
-                AssetsConfig configToSave = CreateInstance<AssetsConfig>();
-                configToSave.assetsEntries = assetsEntries
-                        .Select(entry => new AssetEntry(
-                            sourceType: entry.sourceType,
-                            absolutePath: PathUtils.FromAlias(entry.AbsolutePath)
-                        ))
-                        .ToList();
-
-                string json = JsonUtility.ToJson(configToSave, true);
-
-                IOManager.WriteAllText(path, json);
-
-                Debug.Log("Config saved to: " + path);
+                InternalLogger.Instance.LogWarning("[AssetsConfig] No entries provided to assign.");
+                return;
             }
-            catch (Exception ex)
-            {
-                Debug.LogError("Failed to save config: " + ex.Message);
-            }
+
+            InternalLogger.Instance.LogDebug($"[AssetsConfig] Assigning {entries.Count} entries to AssetsConfig.");
+
+            this.entries.Clear();
+            this.entries = entries;
+        }
+
+        internal bool Exists(AssetEntry entry)
+        {
+            return entries.list.Any(e => e.Equals(entry));
         }
     }
 }
