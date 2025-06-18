@@ -406,25 +406,6 @@ namespace VT.Tools.EssentialAssetsImporter
                 );
             }
         }
-
-        private void DrawTestButtons()
-        {
-            Button.Draw(
-                content: new GUIContent("Enable", "Test enable state"),
-                backgroundColor: new Color(0.5f, 1f, 0.5f),
-                onClick: () => OnEnableRequested?.Invoke(),
-                style: null,
-                GUILayout.Height(32)
-            );
-
-            Button.Draw(
-                content: new GUIContent("Disable", "Test disable state"),
-                backgroundColor: new Color(0.5f, 1f, 0.5f),
-                onClick: () => OnDisableRequested?.Invoke(),
-                style: null,
-                GUILayout.Height(32)
-            );
-        }
     }
 }
 #endif

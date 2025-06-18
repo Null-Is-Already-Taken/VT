@@ -49,10 +49,10 @@ namespace VT.Editor.Utils
 
         private static readonly Dictionary<PathAlias, Func<string>> AliasToPath = new()
         {
-            { PathAlias.USER, GetUserProfilePath },
-            { PathAlias.PROJECT, GetProjectPath },
-            { PathAlias.TEMP, IOManager.GetTempPath },
-            { PathAlias.ASSETS_STORE, GetAssetStorePath }
+            { PathAlias.USER, () => GetUserProfilePath() },
+            { PathAlias.PROJECT, () => GetProjectPath() },
+            { PathAlias.TEMP, () => IOManager.GetTempPath() },
+            { PathAlias.ASSETS_STORE, () => GetAssetStorePath() }
         };
 
         private static string GetAliasString(PathAlias alias) => $"${alias}$";

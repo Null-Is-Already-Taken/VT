@@ -207,12 +207,7 @@ namespace VT.Tools.EssentialAssetsImporter
             if (string.IsNullOrEmpty(absolutePath))
                 return;
 
-            var entry = new AssetEntry
-            (
-                sourceType: PackageSourceType.LocalUnityPackage,
-                absolutePath: absolutePath
-            );
-            AddEntry(entry);
+            AddEntry(AssetEntry.Create(PackageSourceType.LocalUnityPackage, absolutePath));
         }
 
         /// <summary>
@@ -229,11 +224,7 @@ namespace VT.Tools.EssentialAssetsImporter
                 return;
             }
 
-            var entry = new AssetEntry
-            (
-                sourceType: PackageSourceType.GitURL,
-                absolutePath: gitURL
-            );
+            var entry = AssetEntry.Create(PackageSourceType.GitURL, gitURL);
 
             if (config.Exists(entry))
             {
@@ -247,17 +238,26 @@ namespace VT.Tools.EssentialAssetsImporter
         /// <summary>
         /// Update a missing local entry.
         /// </summary>
-        private bool LocateMissingEntry(AssetEntry entry, string absolutePath)
+        private bool LocateMissingEntry(int index, string absolutePath)
         {
-            if (Entries.list.Any(e => e.Equals(entry)))
-                return false;
+            var entry = AssetEntry.Create(PackageSourceType.LocalUnityPackage, absolutePath);
 
-            entry = new AssetEntry
-            (
-                sourceType: PackageSourceType.LocalUnityPackage,
-                absolutePath: absolutePath
-            );
+            if (Entries.list.Any(e => e.Equals(entry)))
+            {
+                InternalLogger.Instance.LogWarning($"[Model] Entry [{entry}] already exists in config.");
+                return false;
+            }
+
+            if (entry.ToString() != config.Entries[index].ToString())
+            {
+                InternalLogger.Instance.LogWarning($"[Model] Located entry mismatched. Expected: {config.Entries[index]}, Found: {entry}");
+                return false;
+            }
+
+            config.Entries[index] = entry;
+
             SaveConfig();
+
             return true;
         }
 
@@ -367,7 +367,7 @@ namespace VT.Tools.EssentialAssetsImporter
             if (string.IsNullOrEmpty(absolutePath))
                 return;
 
-            LocateMissingEntry(Entries[index], absolutePath);
+            LocateMissingEntry(index, absolutePath);
         }
 
         public async Task HandleImportAsync()

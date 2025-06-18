@@ -492,7 +492,13 @@ namespace VT.IO
             try
             {
                 var normalizedPath = NormalizePath(path);
-                return FileExists(normalizedPath) ? File.ReadAllText(normalizedPath) : null;
+
+                if (FileExists(normalizedPath))
+                {
+                    return File.ReadAllText(normalizedPath);
+                }
+
+                return null;
             }
             catch (Exception ex)
             {
