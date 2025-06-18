@@ -1,4 +1,5 @@
 ﻿#if UNITY_EDITOR
+using GluonGui.WorkspaceWindow.Views.WorkspaceExplorer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,6 +51,10 @@ namespace VT.Tools.EssentialAssetsImporter
         /// </summary>
         public EssentialAssetsImporterModel()
         {
+            configFolderPath = IOManager.CombinePaths("Assets", "EssentialAssetsImporter", "ConfigData");
+            configFilePath = IOManager.CombinePaths(configFolderPath, "ConfigData.json");
+            upmRegistryFilePath = IOManager.CombinePaths(configFolderPath, "UnityPackageRegistry.json");
+
             fileExistenceCache = new();
 
             // Ensure the config folder exists
@@ -244,7 +249,7 @@ namespace VT.Tools.EssentialAssetsImporter
         /// </summary>
         private bool LocateMissingEntry(AssetEntry entry, string absolutePath)
         {
-            if (Entries.Any(e => e.Equals(entry)))
+            if (Entries.list.Any(e => e.Equals(entry)))
                 return false;
 
             entry = new AssetEntry
@@ -269,7 +274,7 @@ namespace VT.Tools.EssentialAssetsImporter
             if (entry.sourceType == PackageSourceType.GitURL)
                 return true;
 
-            string full = entry.AbsolutePath;
+            string full = entry.GetFullPath();
 
             if (!fileExistenceCache.TryGetValue(full, out bool exists))
             {
@@ -293,69 +298,34 @@ namespace VT.Tools.EssentialAssetsImporter
             {
                 var e = entries[i];
                 float progress = (float)i / total;
+
+                string fullPath;
+                if (e.sourceType == PackageSourceType.LocalUnityPackage)
+                {
+                    fullPath = PathUtils.FromAlias(e.AliasPath);
+                }
+                else
+                {
+                    fullPath = e.GetFullPath();
+                }
+
                 try
                 {
                     if (e.sourceType == PackageSourceType.LocalUnityPackage && FileExists(e))
                     {
-                        AssetDatabase.ImportPackage(e.AbsolutePath, false);
+                        AssetDatabase.ImportPackage(fullPath, false);
                     }
                     else if (e.sourceType == PackageSourceType.GitURL)
                     {
-                        await UPMClientWrapper.AddPackageAsync(e.RelativePath);
+                        await UPMClientWrapper.AddPackageAsync(e.GetFullPath());
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[Model] Import failed for '{e.RelativePath}': {ex.Message}");
-                }
-            }
-            AssetDatabase.Refresh();
-        }
-
-        public async Task HandleImport()
-        {
-            string registryPath = IOManager.CombinePaths(configFolderPath, "UnityPackageRegistry.json");
-            var registry = UnityPackageRegistry.Load(registryPath);
-
-            foreach (var entry in config.Entries.list)
-            {
-                if (entry.sourceType == PackageSourceType.LocalUnityPackage)
-                {
-                    string alias = PathUtils.ToAlias(entry.AbsolutePath);
-
-                    if (!registry.IsImported(alias))
-                    {
-                        if (IOManager.FileExists(entry.AbsolutePath))
-                        {
-                            AssetDatabase.ImportPackage(entry.AbsolutePath, false);
-                            registry.AddOrUpdate(alias);
-                            Debug.Log($"✅ Imported: {alias}");
-                        }
-                        else
-                        {
-                            Debug.LogWarning($"⚠️ File not found: {alias}");
-                        }
-                    }
-                    else
-                    {
-                        Debug.Log($"⏩ Skipped (already imported): {alias}");
-                    }
-                }
-                else if (entry.sourceType == PackageSourceType.GitURL)
-                {
-                    if (!await UPMClientWrapper.IsPackageInstalledAsync(entry.AbsolutePath))
-                    {
-                        await UPMClientWrapper.AddPackageAsync(entry.AbsolutePath);
-                        Debug.Log($"✅ Added UPM: {entry.AbsolutePath}");
-                    }
-                    else
-                    {
-                        Debug.Log($"⏩ Skipped UPM (already installed): {entry.AbsolutePath}");
-                    }
+                    Debug.LogError($"[Model] Import failed for '{fullPath}': {ex.Message}");
                 }
             }
 
-            registry.Save(registryPath);
             AssetDatabase.Refresh();
         }
 
@@ -364,8 +334,7 @@ namespace VT.Tools.EssentialAssetsImporter
 
         public void HandleSaveConfigToJSON()
         {
-            var filePath = IOManager.CombinePaths(configFolderPath, "AssetsConfig.json");
-            string uniqueAssetPath = AssetDatabase.GenerateUniqueAssetPath(filePath);
+            string uniqueAssetPath = AssetDatabase.GenerateUniqueAssetPath(configFilePath);
             IOManager.SaveJson(uniqueAssetPath, config.Entries, true);
             AssetDatabase.Refresh();
         }
@@ -409,7 +378,9 @@ namespace VT.Tools.EssentialAssetsImporter
         //--- Private Fields ---//
 
         private AssetsConfig config;
-        private readonly string configFolderPath = IOManager.CombinePaths("Assets", "EssentialAssetsImporter", "ConfigData");
+        private readonly string configFolderPath;
+        private readonly string configFilePath;
+        private readonly string upmRegistryFilePath;
         private readonly Dictionary<string, bool> fileExistenceCache;
 
         //--- Private Helpers ---//

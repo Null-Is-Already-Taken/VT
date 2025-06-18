@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using VT.Editor.GUI;
 using VT.Editor.Utils;
+using VT.Logger;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
@@ -38,6 +39,9 @@ namespace VT.Tools.EssentialAssetsImporter
         public event Action<int> OnPageChanged;
         public event Action<int> OnSelectConfigRequested;
 
+        public event Action OnEnableRequested;
+        public event Action OnDisableRequested;
+
         //--- State ---//
 
         private List<AssetsConfig> configList;
@@ -51,6 +55,8 @@ namespace VT.Tools.EssentialAssetsImporter
         private Vector2 scrollPos;
         private bool addingGitUrl;
         private string newGitUrl = string.Empty;
+
+        private bool interactible;
 
         //--- Constants ---//
 
@@ -98,6 +104,12 @@ namespace VT.Tools.EssentialAssetsImporter
             this.totalPages = totalPages;
         }
 
+        public void SetInteractible(bool interactible)
+        {
+            InternalLogger.Instance.LogDebug($"Setting interactible state: {interactible}");
+            this.interactible = interactible;
+        }
+
         //--- Menu ---//
 
         [MenuItem("Tools/VT/Essential Assets Importer")]
@@ -110,6 +122,8 @@ namespace VT.Tools.EssentialAssetsImporter
 
         private void OnEnable()
         {
+            SetInteractible(true);
+
             // Ensure model & presenter survive domain reloads
             model ??= new EssentialAssetsImporterModel();
             presenter ??= new EssentialAssetsImporterPresenter(this, model);
@@ -117,6 +131,8 @@ namespace VT.Tools.EssentialAssetsImporter
 
         private void OnDisable()
         {
+            SetInteractible(false);
+
             presenter?.Dispose();
         }
 
@@ -128,15 +144,20 @@ namespace VT.Tools.EssentialAssetsImporter
             using var sv = new EditorGUILayout.ScrollViewScope(scrollPos);
             scrollPos = sv.scrollPosition;
 
-            DrawConfigHeader();
-            DrawEntries();
-            DrawActionButtons();
+            using (new EditorGUI.DisabledGroupScope(!interactible))
+            {
+                DrawConfigProfileHeader();
+                DrawEntries();
+                DrawActionButtons();
+            }
+
+            //DrawTestButtons(); // For testing purposes, can be removed later
         }
 
         /// <summary>
         /// Renders the config profiles header with profile selector.
         /// </summary>
-        private void DrawConfigHeader()
+        private void DrawConfigProfileHeader()
         {
             using (new EditorGUILayout.VerticalScope("helpBox"))
             {
@@ -384,6 +405,25 @@ namespace VT.Tools.EssentialAssetsImporter
                     GUILayout.Height(32)
                 );
             }
+        }
+
+        private void DrawTestButtons()
+        {
+            Button.Draw(
+                content: new GUIContent("Enable", "Test enable state"),
+                backgroundColor: new Color(0.5f, 1f, 0.5f),
+                onClick: () => OnEnableRequested?.Invoke(),
+                style: null,
+                GUILayout.Height(32)
+            );
+
+            Button.Draw(
+                content: new GUIContent("Disable", "Test disable state"),
+                backgroundColor: new Color(0.5f, 1f, 0.5f),
+                onClick: () => OnDisableRequested?.Invoke(),
+                style: null,
+                GUILayout.Height(32)
+            );
         }
     }
 }

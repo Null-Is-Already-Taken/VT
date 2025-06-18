@@ -1,8 +1,7 @@
 {
-    "name": "VT.PackageManager",
-    "rootNamespace": "VT.PackageManager",
+    "name": "VT.Collections.Wrapper",
+    "rootNamespace": "VT.Collections.Wrapper",
     "references": [
-        "GUID:2e7bb7489641548f1b3f16d42319f968",
         "GUID:9f8e408bc8d8e4901833e026e75e395a"
     ],
     "includePlatforms": [],

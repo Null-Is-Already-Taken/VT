@@ -25,11 +25,6 @@ namespace VT.Tools.EssentialAssetsImporter
         public void Add(AssetEntry entry) => list.Add(entry);
         public bool Remove(AssetEntry entry) => list.Remove(entry);
 
-        internal bool Any(Func<object, bool> value)
-        {
-            throw new NotImplementedException();
-        }
-
         public AssetEntry this[int index]
         {
             get => list[index];
@@ -52,18 +47,15 @@ namespace VT.Tools.EssentialAssetsImporter
             switch (sourceType)
             {
                 case PackageSourceType.LocalUnityPackage:
-                    AbsolutePath = IOManager.NormalizePath(absolutePath);
                     RelativePath = IOManager.GetRelativePath(PathUtils.GetAssetStorePath(), absolutePath);
                     AliasPath = PathUtils.ToAlias(absolutePath);
                     InternalLogger.Instance.LogDebug($"FileExists test: {IOManager.FileExists(PathUtils.FromAlias(AliasPath))}");
                     break;
                 case PackageSourceType.GitURL:
-                    AbsolutePath = absolutePath;
                     RelativePath = absolutePath;
                     AliasPath = absolutePath;
                     break;
                 default:
-                    AbsolutePath = string.Empty;
                     RelativePath = string.Empty;
                     AliasPath = string.Empty;
                     break;
@@ -72,7 +64,7 @@ namespace VT.Tools.EssentialAssetsImporter
 
         public PackageSourceType sourceType = PackageSourceType.LocalUnityPackage;
 
-        public string AbsolutePath;
+        public string GetFullPath() => PathUtils.FromAlias(AliasPath);
         public string RelativePath;
         public string AliasPath;
 
@@ -149,7 +141,7 @@ namespace VT.Tools.EssentialAssetsImporter
         public bool Equals(AssetEntry other)
         {
             return sourceType == other.sourceType
-            && string.Equals(AbsolutePath, other.AbsolutePath, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(GetFullPath(), other.GetFullPath(), StringComparison.OrdinalIgnoreCase)
             && string.Equals(RelativePath, other.RelativePath, StringComparison.OrdinalIgnoreCase);
         }
 
@@ -159,8 +151,8 @@ namespace VT.Tools.EssentialAssetsImporter
         {
             return HashCode.Combine(
                 sourceType,
-                AbsolutePath?.ToLowerInvariant(),
-                RelativePath?.ToLowerInvariant()
+                RelativePath?.ToLowerInvariant(),
+                AliasPath?.ToLowerInvariant()
             );
         }
     }

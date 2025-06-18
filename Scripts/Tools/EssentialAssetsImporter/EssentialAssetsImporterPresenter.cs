@@ -79,9 +79,12 @@ namespace VT.Tools.EssentialAssetsImporter
             view.OnLocateRequested += HandleLocate;
             view.OnRemoveRequested += HandleRemove;
             view.OnImportAllRequested += HandleImportAsync;
-            view.OnRefreshRequested += HandleRefreshRequested;
+            view.OnRefreshRequested += HandleRefreshRequest;
             view.OnPageChanged += HandlePageChange;
             view.OnSelectConfigRequested += HandleSelectConfig;
+
+            view.OnEnableRequested += HandleEnable;
+            view.OnDisableRequested += HandleDisable;
         }
 
         /// <summary>
@@ -128,7 +131,7 @@ namespace VT.Tools.EssentialAssetsImporter
             if (now - lastAutoRefreshTime >= autoRefreshInterval)
             {
                 lastAutoRefreshTime = now;
-                HandleRefreshRequested();
+                HandleRefreshRequest();
             }
         }
 
@@ -176,9 +179,12 @@ namespace VT.Tools.EssentialAssetsImporter
             view.OnLocateRequested -= HandleLocate;
             view.OnRemoveRequested -= HandleRemove;
             view.OnImportAllRequested -= HandleImportAsync;
-            view.OnRefreshRequested -= HandleRefreshRequested;
+            view.OnRefreshRequested -= HandleRefreshRequest;
             view.OnPageChanged -= HandlePageChange;
             view.OnSelectConfigRequested -= HandleSelectConfig;
+
+            view.OnEnableRequested -= HandleEnable;
+            view.OnDisableRequested -= HandleDisable;
         }
 
         //--- Event Handlers ---//
@@ -210,8 +216,20 @@ namespace VT.Tools.EssentialAssetsImporter
 
         private async void HandleImportAsync()
         {
+            view.SetInteractible(false);
             await model.HandleImportAsync();
             Refresh();
+            view.SetInteractible(true);
+        }
+
+        private void HandleEnable()
+        {
+            view.SetInteractible(true);
+        }
+
+        private void HandleDisable()
+        {
+            view.SetInteractible(false);
         }
 
         private void HandlePageChange(int page)
@@ -241,7 +259,7 @@ namespace VT.Tools.EssentialAssetsImporter
             model.HandleLoadConfigFromJSON(path);
         }
 
-        private void HandleRefreshRequested()
+        private void HandleRefreshRequest()
         {
             RefreshAllConfigs();
             Refresh();
