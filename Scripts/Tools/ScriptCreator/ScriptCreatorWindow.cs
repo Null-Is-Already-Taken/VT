@@ -150,7 +150,7 @@ namespace VT.Tools.ScriptCreator
                 return "NewScript";
 
             // Match "class ClassName" optionally preceded by modifiers like public, private, etc.
-            var match = Regex.Match(script, @"\bclass\s+([A-Za-z_][A-Za-z0-9_]*)");
+            var match = Regex.Match(script, @"\b(?:class|interface|struct|enum)\s+([A-Za-z_][A-Za-z0-9_]*)");
 
             if (match.Success && match.Groups.Count > 1)
                 return match.Groups[1].Value;
