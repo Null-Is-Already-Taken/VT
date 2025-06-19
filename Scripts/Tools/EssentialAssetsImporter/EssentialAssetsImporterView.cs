@@ -196,8 +196,7 @@ namespace VT.Tools.EssentialAssetsImporter
                     Button.Draw(
                         content: new GUIContent(loadButtonIcon, "Load config JSON"),
                         backgroundColor: Color.white,
-                        onClick: () =>
-                        {
+                        onClick: () => {
                             string absolutePath = EditorUtility.OpenFilePanel(
                                 "Select UnityPackage",
                                 PathUtils.GetProjectPath(),
@@ -341,8 +340,7 @@ namespace VT.Tools.EssentialAssetsImporter
                     Button.Draw(
                         content: new GUIContent(locateButtonIcon, "Locate missing package"),
                         backgroundColor: Color.white,
-                        onClick: () =>
-                        {
+                        onClick: () => {
                             string absolutePath = EditorUtility.OpenFilePanel(
                                 "Locate UnityPackage",
                                 PathUtils.GetAssetStorePath(),

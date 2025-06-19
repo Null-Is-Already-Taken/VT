@@ -1,11 +1,7 @@
 {
-    "name": "VT.Editor.GUI",
-    "rootNamespace": "VT.Editor.GUI",
-    "references": [
-        "GUID:fd2d458ef27b2db47a77a2f23bfb4432",
-        "GUID:2e7bb7489641548f1b3f16d42319f968",
-        "GUID:dc6d8b55341fe7949a021b0e58b83f1e"
-    ],
+    "name": "VT.ThirdParties",
+    "rootNamespace": "VT.ThirdParties",
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

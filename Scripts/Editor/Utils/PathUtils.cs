@@ -20,7 +20,7 @@ namespace VT.Editor.Utils
 
         public static string GetProjectPath()
         {
-            return Application.dataPath.Replace("/Assets", "");
+            return Application.dataPath;
         }
 
         public static string GetAssetStorePath()

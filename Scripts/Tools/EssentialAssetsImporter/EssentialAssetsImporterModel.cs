@@ -1,16 +1,13 @@
 ﻿#if UNITY_EDITOR
-using GluonGui.WorkspaceWindow.Views.WorkspaceExplorer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
-using VT.Editor.Extensions;
 using VT.Editor.Utils;
 using VT.IO;
 using VT.Logger;
-using VT.PackageManager;
 
 namespace VT.Tools.EssentialAssetsImporter
 {

@@ -13,11 +13,11 @@ namespace VT.Editor.GUI
         public static GUIStyle MiniButtonRight => new (EditorStyles.miniButtonRight);
         public static GUIStyle MiniPullDown => new (EditorStyles.miniPullDown);
 
-        public static GUIStyle Inline => new (UnityEngine.GUI.skin.button)
+        public static GUIStyle Inline => new(UnityEngine.GUI.skin.button)
         {
             fontSize = 12,
-            fixedWidth = 24,
-            fixedHeight = 24,
+            fixedWidth = EditorGUIUtility.singleLineHeight,
+            fixedHeight = EditorGUIUtility.singleLineHeight,
             alignment = TextAnchor.MiddleCenter,
             padding = new RectOffset(0, 0, 0, 0),
             normal = { textColor = Color.white }
