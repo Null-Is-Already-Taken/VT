@@ -32,6 +32,15 @@ namespace VT.Editor.GUI
             padding = new RectOffset(0, 0, 0, 0),
             normal = { textColor = Color.white }
         };
+
+        public static GUIStyle BigButton => new(UnityEngine.GUI.skin.button)
+        {
+            fontSize = 12,
+            fixedHeight = 32,
+            alignment = TextAnchor.MiddleCenter,
+            padding = new RectOffset(0, 0, 0, 0),
+            normal = { textColor = Color.white }
+        };
     }
 
     public static class Button

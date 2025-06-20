@@ -5,17 +5,16 @@ namespace VT.Editor.GUI
 {
     public static class TextField
     {
-        public static string Draw(string label, string value, GUIStyle style = null, params GUILayoutOption[] options)
+        public static string Draw(GUIContent label, string value, GUIStyle style = null, params GUILayoutOption[] options)
         {
-            if (!string.IsNullOrEmpty(label))
+            if (label != null)
             {
-                EditorGUILayout.LabelField(label);
+                Label.Draw(label);
             }
 
-            if (style != null)
-                return EditorGUILayout.TextField(value, style, options);
-            else
-                return EditorGUILayout.TextField(value, options);
+            style ??= UnityEngine.GUI.skin.textArea;
+
+            return EditorGUILayout.TextField(value, style, options);
         }
     }
 }

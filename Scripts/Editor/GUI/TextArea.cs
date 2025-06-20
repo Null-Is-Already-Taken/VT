@@ -1,3 +1,4 @@
+using System;
 using UnityEditor;
 using UnityEngine;
 
@@ -5,22 +6,24 @@ namespace VT.Editor.GUI
 {
     public static class TextArea
     {
-        public static string Draw(string label, string value, float height = 100f, GUIStyle style = null)
+        public static string Draw(GUIContent label, string value, ref Vector2 scroll, Action<string> onValueChanged, float height = 100f, GUIStyle style = null)
         {
-            if (!string.IsNullOrEmpty(label))
+            if (label != null)
                 EditorGUILayout.LabelField(label);
 
-            var scroll = Vector2.zero;
-            scroll = EditorGUILayout.BeginScrollView(scroll, GUILayout.Height(height));
+            style ??= UnityEngine.GUI.skin.textArea;
 
-            string result;
-            if (style != null)
-                result = EditorGUILayout.TextArea(value, style, GUILayout.ExpandHeight(true));
-            else
-                result = EditorGUILayout.TextArea(value, GUILayout.ExpandHeight(true));
+            using var sv = new EditorGUILayout.ScrollViewScope(scroll);
+            scroll = sv.scrollPosition;
 
-            EditorGUILayout.EndScrollView();
-            return result;
+            string newValue = EditorGUILayout.TextArea(value, style, GUILayout.ExpandHeight(true));
+
+            if (newValue != value)
+            {
+                onValueChanged?.Invoke(newValue);
+            }
+
+            return newValue;
         }
     }
 }

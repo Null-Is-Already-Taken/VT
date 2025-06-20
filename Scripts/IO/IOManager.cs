@@ -1,3 +1,4 @@
+using Codice.Utils;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -284,6 +285,25 @@ namespace VT.IO
                 InternalLogger.Instance.LogError($"Error creating directory at '{path}': {ex.Message}");
                 return null; // Fallback to null on error
             }
+        }
+
+        public static string GetCurrentDirectory()
+        {
+            var guids = Selection.assetGUIDs;
+
+            if (guids.Length == 0)
+            {
+                return Application.dataPath; // Default to root if nothing is selected
+            }
+
+            var path = NormalizePath(AssetDatabase.GUIDToAssetPath(guids[0]));
+
+            if (DirectoryExists(path))
+            {
+                return path;
+            }
+
+            return Application.dataPath;
         }
 
         /// <summary>
