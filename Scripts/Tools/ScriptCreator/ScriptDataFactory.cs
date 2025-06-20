@@ -53,5 +53,13 @@ namespace VT.Tools.ScriptCreator
             var match = Regex.Match(content, @"\b(?:class|interface|struct|enum)\s+([A-Za-z_][A-Za-z0-9_]*)");
             return match.Success ? match.Groups[1].Value : DEFAULT_NAME;
         }
+
+        public static ScriptData ProcessScriptContent(string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+                return new ScriptData();
+
+            return FromContent(content);
+        }
     }
 }

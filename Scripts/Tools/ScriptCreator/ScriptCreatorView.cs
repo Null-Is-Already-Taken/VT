@@ -1,123 +1,183 @@
-#if UNITY_EDITOR && ODIN_INSPECTOR
+#if UNITY_EDITOR
 
 using System;
 using UnityEditor;
 using UnityEngine;
 using VT.Editor.GUI;
-using VT.Editor.Utils;
+using VT.Logger;
 
 namespace VT.Tools.ScriptCreator
 {
-    public class ScriptCreatorView : EditorWindow, IEditorView
+    public class ScriptCreatorView : EditorWindow
     {
-        public event Action OnScriptContentChangedEvent;
+        public event Action<string> OnScriptContentChangedEvent;
         public event Action<string, string> OnSaveScriptEvent;
+        public event Action OnRefreshEvent;
+
+        public ScriptData Data => ScriptDataFactory.FromContent(scriptContent);
+
+        private ScriptCreatorModel scriptCreatorModel;
+        private ScriptCreatorPresenter scriptCreatorPresenter;
 
         public void OnEnable()
         {
-            var scriptCreatorModel = new ScriptCreatorModel();
+            scriptCreatorModel ??= new ScriptCreatorModel();
+            scriptCreatorPresenter ??= new ScriptCreatorPresenter(scriptCreatorModel, this);
+            scriptCreatorPresenter.Init();
         }
 
         public void OnDisable()
         {
             // Cleanup if needed
+            scriptCreatorPresenter?.Dispose();
         }
+
+        private const float MinLayoutWidth = 300f;
 
         public void OnGUI()
         {
+            float currentWidth = position.width;
+
+            if (currentWidth < MinLayoutWidth)
+            {
+                EditorGUILayout.HelpBox($"Minimum recommended width is {MinLayoutWidth}px. Expand the window for full layout.", MessageType.Warning);
+                GUI.enabled = false;
+            }
+
+            using var sv = new EditorGUILayout.ScrollViewScope(editorWindowScroll);
+            editorWindowScroll = sv.scrollPosition;
+
             Label.Draw(
                 content: new("Script Creator"),
                 style: LabelStyles.BoldLabel,
                 options: GUILayout.ExpandWidth(true)
             );
 
-            EditorGUILayout.Space(spacing);
-
-            using (new EditorGUILayout.HorizontalScope())
+            using (new EditorGUILayout.VerticalScope("helpBox"))
             {
-                Label.Draw(
-                    content: new("Script Name"),
-                    style: LabelStyles.Label,
-                    options: GUILayout.Width(80)
+                EditorGUILayout.Space(spacing);
+
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    Label.Draw(
+                        content: new("Script Name"),
+                        style: LabelStyles.Label,
+                        options: GUILayout.Width(80)
+                    );
+
+                    Label.Draw(
+                        content: new(className),
+                        style: LabelStyles.Label,
+                        options: GUILayout.ExpandWidth(true)
+                    );
+                }
+
+                path = PathPicker.Draw(
+                    label: new("Save Path"),
+                    currentPath: path,
+                    filter: PathType.Folder
                 );
 
-                TextField.Draw(
-                    label: string.Empty,
-                    value: "",
-                    style: EditorStyles.textField,
-                    options: GUILayout.ExpandWidth(true)
+                EditorGUILayout.Space(spacing);
+            }
+
+            scriptContent = TextArea.Draw(
+                label: null,
+                value: scriptContent,
+                scroll: ref textAreaScroll,
+                onValueChanged: content =>
+                {
+                    InternalLogger.Instance.LogDebug("Script content changed.");
+                    // Invoke the content changed event
+                    OnScriptContentChangedEvent?.Invoke(content);
+                },
+                style: EditorStyles.textArea,
+                height: EditorGUIUtility.singleLineHeight * scriptContentLines
+            );
+
+            if (string.IsNullOrWhiteSpace(scriptContent))
+            {
+                EditorGUILayout.HelpBox("Please enter the script content.", MessageType.Info);
+            }
+            else
+            {
+                Button.Draw(
+                    content: new("Save Script"),
+                    backgroundColor: Color.green,
+                    onClick: () =>
+                    {
+                        // Invoke the save event
+                        OnSaveScriptEvent?.Invoke(path, scriptContent);
+                    },
+                    style: ButtonStyles.BigButton
                 );
             }
 
-            //using (new EditorGUILayout.HorizontalScope())
-            //{
-            //    Label.Draw(
-            //        content: new("Path"),
-            //        style: LabelStyles.Label,
-            //        options: GUILayout.Width(80)
-            //    );
+            Button.Draw(
+                content: new("Test"),
+                backgroundColor: Color.white,
+                onClick: () =>
+                {
+                    //var instanceID = Selection.activeInstanceID;
+                    //InternalLogger.Instance.LogDebug($"Selected asset GUIDs: {instanceID}");
+                    //string assetPath = AssetDatabase.GetAssetPath(instanceID);
+                    //InternalLogger.Instance.LogDebug($"Selected asset path: {assetPath}");
 
-            //    TextFields.Draw(
-            //        label: string.Empty,
-            //        value: "",
-            //        style: EditorStyles.textField,
-            //        options: GUILayout.ExpandWidth(true)
-            //    );
+                    var guids = Selection.assetGUIDs;
 
-            //    Button.Draw(
-            //        content: new (EmbeddedIcons.OpenFolder_Unicode),
-            //        backgroundColor: Color.white,
-            //        onClick: () => {
-            //            string absolutePath = EditorUtility.OpenFolderPanel(
-            //                title: "Select Save Path",
-            //                folder: PathUtils.GetProjectPath(),
-            //                defaultName: ""
-            //            );
-            //        },
-            //        style: ButtonStyles.Inline
-            //    );
-            //}
+                    if (guids.Length == 0)
+                    {
+                        InternalLogger.Instance.LogWarning("No assets selected for testing.");
+                        return;
+                    }
 
-            PathPicker.Draw(
-                label: "Save Path",
-                currentPath: ref path,
-                filter: PathType.Folder
+                    for (int i = 0; i < guids.Length; i++)
+                    {
+                        string assetPath = AssetDatabase.GUIDToAssetPath(guids[i]);
+                        InternalLogger.Instance.LogDebug($"Selected asset {i + 1}: {assetPath}");
+                    }
+                },
+                style: ButtonStyles.BigButton
             );
+
+            if (currentWidth < MinLayoutWidth)
+                GUI.enabled = true;
         }
 
-        //private void SaveScript(string content)
-        //{
-        //    if (string.IsNullOrWhiteSpace(scriptName) || string.IsNullOrWhiteSpace(folderPath) || string.IsNullOrWhiteSpace(scriptContent))
-        //    {
-        //        EditorUtility.DisplayDialog
-        //        (
-        //            title: "Error",
-        //            message: "Please fill in all fields before saving.",
-        //            ok: "OK"
-        //        );
+        public ScriptData GetData() => ScriptDataFactory.FromContent(scriptContent);
 
-        //        return;
-        //    }
+        public void SetData(ScriptData scriptData)
+        {
+            className = scriptData.ClassName;
+            scriptContent = scriptData.Content;
+        }
 
-        //    // Invoke the save event
-        //    OnSaveScriptEvent?.Invoke(folderPath, scriptContent);
-        //}
-
-        //[Button(ButtonSizes.Large)]
-        //[GUIColor(0.3f, 0.8f, 0.3f)]
-        //public void SaveScript()
-        //{
-        //    OnSaveScriptEvent?.Invoke(folderPath, scriptContent);
-        //}
+        public bool AskForOverwriteConfirmation(string scriptName, string folderPath)
+        {
+            return EditorUtility.DisplayDialog(
+                title: "Overwrite Script?",
+                message: $"“{scriptName}.cs” already exists at {folderPath}. Overwrite?",
+                ok: "Yes",
+                cancel: "No"
+            );
+        }
 
         [MenuItem("Tools/Script Creator")]
         private static void OpenWindow()
         {
-            GetWindow<ScriptCreatorView>().Show();
+           var window = GetWindow<ScriptCreatorView>();
+            window.minSize = new Vector2(400, 300); // Minimum width and height
+            window.Show();
         }
 
-        private const int spacing = 8;
+        private const int spacing = 4;
         private string path = string.Empty;
+        private string className = "NewScript";
+        private string scriptContent = string.Empty;
+        private const int scriptContentLines = 15;
+
+        private Vector2 editorWindowScroll;
+        private Vector2 textAreaScroll;
     }
 }
 

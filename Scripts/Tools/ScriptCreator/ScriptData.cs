@@ -19,5 +19,10 @@ namespace VT.Tools.ScriptCreator
         private string content;
         /// <summary>The raw script content, may include a macro token.</summary>
         public string Content => content;
+
+        public override string ToString()
+        {
+            return $"ScriptData(ClassName: {ClassName}, Content Length: {Content.Length})";
+        }
     }
 }
