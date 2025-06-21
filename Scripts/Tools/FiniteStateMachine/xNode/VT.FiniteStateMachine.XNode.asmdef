@@ -1,0 +1,17 @@
+{
+    "name": "VT.FiniteStateMachine.XNode",
+    "rootNamespace": "VT.FiniteStateMachine.XNode",
+    "references": [
+        "GUID:b8e24fd1eb19b4226afebb2810e3c19b",
+        "GUID:670e5b57f22f71146b1de6213d514d42"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

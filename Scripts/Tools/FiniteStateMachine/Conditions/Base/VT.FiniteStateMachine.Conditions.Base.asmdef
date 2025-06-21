@@ -1,0 +1,14 @@
+{
+    "name": "VT.FiniteStateMachine.Conditions.Base",
+    "rootNamespace": "VT.FiniteStateMachine.Conditions.Base",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

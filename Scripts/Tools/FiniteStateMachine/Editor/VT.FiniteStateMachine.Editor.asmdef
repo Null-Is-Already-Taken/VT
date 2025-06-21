@@ -1,0 +1,19 @@
+{
+    "name": "VT.FiniteStateMachine.Editor",
+    "rootNamespace": "VT.FiniteStateMachine.Editor",
+    "references": [
+        "GUID:b8e24fd1eb19b4226afebb2810e3c19b",
+        "GUID:002c1bbed08fa44d282ef34fd5edb138",
+        "GUID:e1cc07f20ccf58a4c91c16df6552090a",
+        "GUID:670e5b57f22f71146b1de6213d514d42"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
