@@ -1,3 +1,5 @@
+#if UNITY_EDITOR
+
 using System;
 
 namespace VT.Tools.ScriptCreator
@@ -26,3 +28,5 @@ namespace VT.Tools.ScriptCreator
         }
     }
 }
+
+#endif

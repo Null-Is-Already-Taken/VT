@@ -1,8 +1,6 @@
-#if UNITY_EDITOR && ODIN_INSPECTOR
+#if UNITY_EDITOR
 
 using System;
-using UnityEditor;
-using VT.IO;
 using VT.Logger;
 
 namespace VT.Tools.ScriptCreator
@@ -26,8 +24,6 @@ namespace VT.Tools.ScriptCreator
 
         public void Save(string path, ScriptData data)
         {
-            path = IOManager.NormalizePath(path);
-
             if (string.IsNullOrWhiteSpace(path))
             {
                 InternalLogger.Instance.LogError("[Model] File path cannot be empty.");
@@ -36,13 +32,13 @@ namespace VT.Tools.ScriptCreator
 
             try
             {
-                IOManager.WriteAllText(path, data.Content);
+                ScriptCreatorIOService.Save(path, data);
                 InternalLogger.Instance.LogDebug($"[Model] Script {data.ClassName} saved at: {path}");
-                AssetDatabase.Refresh();
             }
             catch (Exception ex)
             {
                 InternalLogger.Instance.LogError($"[Model] Error saving script: {ex.Message}");
+                return;
             }
         }
 

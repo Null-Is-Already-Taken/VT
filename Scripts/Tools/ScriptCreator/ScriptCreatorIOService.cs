@@ -1,4 +1,9 @@
+#if UNITY_EDITOR
+
+using System;
+using UnityEditor;
 using VT.IO;
+using VT.Logger;
 
 namespace VT.Tools.ScriptCreator
 {
@@ -33,7 +38,7 @@ namespace VT.Tools.ScriptCreator
                     return PathError.DirectoryNotFound;
                 }
             }
-            catch (System.Exception)
+            catch (Exception)
             {
                 return PathError.AccessDenied;
             }
@@ -45,11 +50,28 @@ namespace VT.Tools.ScriptCreator
         {
             if (string.IsNullOrWhiteSpace(directory) || !IOManager.DirectoryExists(directory))
             {
-                throw new System.ArgumentException("Invalid directory path.", nameof(directory));
+                throw new ArgumentException("Invalid directory path.", nameof(directory));
             }
 
             var fileName = $"{scriptData.ClassName}.cs";
             return IOManager.CombinePaths(directory, fileName);
         }
+
+        public static void Save(string path, ScriptData data)
+        {
+            path = IOManager.NormalizePath(path);
+
+            try
+            {
+                IOManager.WriteAllText(path, data.Content);
+                AssetDatabase.Refresh();
+            }
+            catch (Exception ex)
+            {
+                InternalLogger.Instance.LogError($"[Model] Error saving script: {ex.Message}");
+            }
+        }
     }
 }
+
+#endif

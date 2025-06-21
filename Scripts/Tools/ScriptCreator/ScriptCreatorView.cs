@@ -4,6 +4,7 @@ using System;
 using UnityEditor;
 using UnityEngine;
 using VT.Editor.GUI;
+using VT.Editor.Utils;
 using VT.Logger;
 
 namespace VT.Tools.ScriptCreator
@@ -75,7 +76,7 @@ namespace VT.Tools.ScriptCreator
                 path = PathPicker.Draw(
                     label: new("Save Path"),
                     currentPath: path,
-                    filter: PathType.Folder
+                    filter: PathUtils.PathType.Folder
                 );
 
                 EditorGUILayout.Space(spacing);
@@ -112,33 +113,6 @@ namespace VT.Tools.ScriptCreator
                     style: ButtonStyles.BigButton
                 );
             }
-
-            Button.Draw(
-                content: new("Test"),
-                backgroundColor: Color.white,
-                onClick: () =>
-                {
-                    //var instanceID = Selection.activeInstanceID;
-                    //InternalLogger.Instance.LogDebug($"Selected asset GUIDs: {instanceID}");
-                    //string assetPath = AssetDatabase.GetAssetPath(instanceID);
-                    //InternalLogger.Instance.LogDebug($"Selected asset path: {assetPath}");
-
-                    var guids = Selection.assetGUIDs;
-
-                    if (guids.Length == 0)
-                    {
-                        InternalLogger.Instance.LogWarning("No assets selected for testing.");
-                        return;
-                    }
-
-                    for (int i = 0; i < guids.Length; i++)
-                    {
-                        string assetPath = AssetDatabase.GUIDToAssetPath(guids[i]);
-                        InternalLogger.Instance.LogDebug($"Selected asset {i + 1}: {assetPath}");
-                    }
-                },
-                style: ButtonStyles.BigButton
-            );
 
             if (currentWidth < MinLayoutWidth)
                 GUI.enabled = true;

@@ -1,3 +1,5 @@
+#if UNITY_EDITOR
+
 using System.Text;
 using System.Text.RegularExpressions;
 using VT.Extensions;
@@ -48,7 +50,7 @@ namespace VT.Tools.ScriptCreator
         public static string ExtractClassName(string content)
         {
             if (string.IsNullOrWhiteSpace(content))
-                return DEFAULT_NAME;
+                return string.Empty;
 
             var match = Regex.Match(content, @"\b(?:class|interface|struct|enum)\s+([A-Za-z_][A-Za-z0-9_]*)");
             return match.Success ? match.Groups[1].Value : DEFAULT_NAME;
@@ -63,3 +65,5 @@ namespace VT.Tools.ScriptCreator
         }
     }
 }
+
+#endif

@@ -1,3 +1,5 @@
+#if UNITY_EDITOR
+
 using VT.IO;
 using VT.Logger;
 using static VT.Tools.ScriptCreator.ScriptCreatorIOService;
@@ -100,3 +102,5 @@ namespace VT.Tools.ScriptCreator
         }
     }
 }
+
+#endif
