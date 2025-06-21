@@ -1,18 +1,12 @@
 using UnityEditor;
 using UnityEngine;
+using VT.Editor.Utils;
 
 namespace VT.Editor.GUI
 {
-    public enum PathType
-    {
-        Any,
-        File,
-        Folder
-    }
-
     public static class DragAndDropTextField
     {
-        public static string Draw(GUIContent content, string value, PathType filter, GUIStyle labelStyle = null, params GUILayoutOption[] options)
+        public static string Draw(GUIContent content, string value, PathUtils.PathType filter, GUIStyle labelStyle = null, params GUILayoutOption[] options)
         {
             Event evt = Event.current;
 
@@ -42,7 +36,7 @@ namespace VT.Editor.GUI
                     {
                         string draggedPath = DragAndDrop.paths[0];
 
-                        if (IsValidPath(draggedPath, filter))
+                        if (PathUtils.IsValidPath(draggedPath, filter))
                         {
                             DragAndDrop.visualMode = DragAndDropVisualMode.Copy;
                             if (evt.type == EventType.DragPerform)
@@ -57,17 +51,6 @@ namespace VT.Editor.GUI
             }
 
             return value;
-        }
-
-        private static bool IsValidPath(string path, PathType filter)
-        {
-            switch (filter)
-            {
-                case PathType.Folder: return AssetDatabase.IsValidFolder(path);
-                case PathType.File: return !AssetDatabase.IsValidFolder(path);
-                case PathType.Any: return true;
-                default: return true;
-            }
         }
     }
 }

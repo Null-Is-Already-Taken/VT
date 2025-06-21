@@ -8,7 +8,7 @@ namespace VT.Editor.GUI
 {
     public static class PathPicker
     {
-        public static string Draw(GUIContent label, string currentPath, PathType filter, GUIStyle labelStyle = null, params GUILayoutOption[] options)
+        public static string Draw(GUIContent label, string currentPath, PathUtils.PathType filter, GUIStyle labelStyle = null, params GUILayoutOption[] options)
         {
             using (new EditorGUILayout.HorizontalScope())
             {

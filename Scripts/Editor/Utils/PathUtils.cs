@@ -1,7 +1,9 @@
 #if UNITY_EDITOR
+using DG.Tweening;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using VT.IO;
 using VT.Logger;
@@ -93,6 +95,23 @@ namespace VT.Editor.Utils
                     return true;
             }
             return false;
+        }
+        public enum PathType
+        {
+            Any,
+            File,
+            Folder
+        }
+
+        public static bool IsValidPath(string path, PathType filter)
+        {
+            return filter switch
+            {
+                PathType.Folder => AssetDatabase.IsValidFolder(path),
+                PathType.File => !AssetDatabase.IsValidFolder(path),
+                PathType.Any => true,
+                _ => true,
+            };
         }
     }
 }
