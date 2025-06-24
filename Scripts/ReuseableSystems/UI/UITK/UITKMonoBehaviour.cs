@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace VT.ReuseableSystems.UI.UITK
+namespace VT.ReusableSystems.UI.UITK
 {
     public abstract class UITKMonoBehaviour<TConstants> : MonoBehaviour where TConstants : class, new()
     {

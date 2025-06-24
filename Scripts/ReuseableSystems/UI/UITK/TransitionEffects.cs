@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace VT.ReuseableSystems.UI.UITK
+namespace VT.ReusableSystems.UI.UITK
 {
     public interface IUITransitionEffect
     {

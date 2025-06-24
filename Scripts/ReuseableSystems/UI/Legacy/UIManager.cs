@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using VT.Patterns.SingletonPattern;
 using System;
 
-namespace VT.ReuseableSystems.UI.Legacy
+namespace VT.ReusableSystems.UI.Legacy
 {
     public abstract class UIManager<TManager> : Singleton<TManager>
         where TManager : UIManager<TManager>

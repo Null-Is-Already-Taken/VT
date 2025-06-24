@@ -5,7 +5,7 @@ using DG.Tweening;
 using System.Collections.Generic;
 using VT.Extensions;
 
-namespace VT.ReuseableSystems.UI.Legacy
+namespace VT.ReusableSystems.UI.Legacy
 {
     public interface IUITransitionEffect
     {

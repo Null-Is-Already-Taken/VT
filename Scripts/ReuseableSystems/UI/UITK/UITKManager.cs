@@ -2,7 +2,7 @@ using System;
 using UnityEngine.UIElements;
 using VT.Patterns.SingletonPattern;
 
-namespace VT.ReuseableSystems.UI.UITK
+namespace VT.ReusableSystems.UI.UITK
 {
     public abstract class UITKManager : Singleton<UITKManager>
     {

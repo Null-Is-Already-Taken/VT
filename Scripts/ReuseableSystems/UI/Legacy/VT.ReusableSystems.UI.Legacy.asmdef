@@ -1,6 +1,6 @@
 {
-    "name": "VT.ReuseableSystems.UI.Legacy",
-    "rootNamespace": "VT.ReuseableSystems.UI.Legacy",
+    "name": "VT.ReusableSystems.UI.Legacy",
+    "rootNamespace": "VT.ReusableSystems.UI.Legacy",
     "references": [
         "GUID:ed393b49ea24b4bb09c9af23f624d098",
         "GUID:e30a6b1ab9eda4beb86a64d9df240d4e",

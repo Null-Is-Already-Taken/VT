@@ -1,4 +1,4 @@
-namespace VT.ReuseableSystems.UI.UITK
+namespace VT.ReusableSystems.UI.UITK
 {
     public enum UITKConstantType
     {

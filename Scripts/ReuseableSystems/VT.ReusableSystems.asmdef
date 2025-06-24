@@ -1,6 +1,6 @@
 {
-    "name": "VT.ReuseableSystems",
-    "rootNamespace": "VT.ReuseableSystems",
+    "name": "VT.ReusableSystems",
+    "rootNamespace": "VT.ReusableSystems",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

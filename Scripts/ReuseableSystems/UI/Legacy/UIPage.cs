@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using DG.Tweening;
 
-namespace VT.ReuseableSystems.UI.Legacy
+namespace VT.ReusableSystems.UI.Legacy
 {
     public class UIPage : MonoBehaviour
     {

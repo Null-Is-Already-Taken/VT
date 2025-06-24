@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace VT.ReuseableSystems.UI.UITK
+namespace VT.ReusableSystems.UI.UITK
 {
     public abstract class UIManager<T> where T : UIManager<T>
     {
