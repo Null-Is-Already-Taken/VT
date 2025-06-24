@@ -23,6 +23,16 @@ namespace VT.Editor.GUI
             normal = { textColor = Color.white }
         };
 
+        public static GUIStyle MiniInline => new(UnityEngine.GUI.skin.button)
+        {
+            fontSize = 8,
+            fixedWidth = EditorGUIUtility.singleLineHeight / 4 * 3,
+            fixedHeight = EditorGUIUtility.singleLineHeight / 4 * 3,
+            alignment = TextAnchor.MiddleCenter,
+            padding = new RectOffset(0, 0, 0, 0),
+            normal = { textColor = Color.white }
+        };
+
         public static GUIStyle Compact => new(UnityEngine.GUI.skin.button)
         {
             fontSize = 12,

@@ -71,10 +71,14 @@ namespace VT.Editor.GUI
 
         public static void DrawAutoSized(string text, GUIStyle style = null, TextAnchor anchor = TextAnchor.MiddleLeft)
         {
+            DrawAutoSized(new GUIContent (text), style, anchor);
+        }
+
+        public static void DrawAutoSized(GUIContent content, GUIStyle style = null, TextAnchor anchor = TextAnchor.MiddleLeft)
+        {
             style ??= LabelStyles.Label;
             style.alignment = anchor;
-            var content = new GUIContent(text);
-            var width   = style.CalcSize(content).x + 8f;
+            var width = style.CalcSize(content).x + 8f;
             Draw(content, style, GUILayout.Width(width));
         }
 
@@ -86,7 +90,7 @@ namespace VT.Editor.GUI
         /// <param name="availableWidth">The pixel width available for this label.</param>
         /// <param name="averageCharWidth">Your average char‐width used for estimating truncation.</param>
         /// <param name="exists">If false, text is drawn red; otherwise white.</param>
-        public static void DrawTruncatedLabel(string fullText, Color textColor, string tooltip, float availableWidth, float averageCharWidth, params GUILayoutOption[] options)
+        public static void DrawTruncatedLabel(string fullText, Color textColor, string tooltip, float availableWidth, float averageCharWidth, GUIStyle style = null, params GUILayoutOption[] options)
         {
             // 1) estimate how many chars will fit, then truncate
             int maxChars = Utils.TextUtils.EstimateMaxChars(availableWidth, averageCharWidth);
@@ -94,7 +98,7 @@ namespace VT.Editor.GUI
 
             // 2) prepare content & style
             var content = new GUIContent(truncated, tooltip);
-            var style = LabelStyles.Label;
+            style ??= LabelStyles.Label;
             style.fixedWidth = availableWidth;
             style.normal.textColor = textColor;
 
