@@ -12,10 +12,11 @@ namespace VT.Editor.GUI
     {
         public static void Draw(
             string title,
+            string tooltip,
             string key,
             Dictionary<string, AnimBool> foldoutStateCache,
             UnityAction repaintCallback,
-            Func<int> getItemCountFunc,
+            Func<string> subScriptGetter,
             Action drawContentCallback,
             bool defaultFoldoutState = true)
         {
@@ -26,38 +27,27 @@ namespace VT.Editor.GUI
                 foldoutStateCache[key] = foldState;
             }
 
-            int itemCount = getItemCountFunc?.Invoke() ?? 0;
-
             using (new EditorGUILayout.VerticalScope("helpbox"))
             {
                 using (new EditorGUILayout.HorizontalScope())
                 {
-                    var icon = foldState.target ? EmbeddedIcons.TriangleBlackDown_Unicode : EmbeddedIcons.TriangleBlackRight_Unicode;
+                    string icon = foldState.target ? EmbeddedIcons.TriangleBlackDownSmall_Unicode : EmbeddedIcons.TriangleBlackRightSmall_Unicode;
+
                     Button.Draw(
-                        content: new GUIContent(icon),
+                        content: new GUIContent(text: $"{icon} {title}", tooltip: tooltip),
                         backgroundColor: Color.white,
                         onClick: () => foldState.target = !foldState.target,
-                        style: ButtonStyles.MiniInline
-                    );
-
-                    Label.DrawTruncatedLabel(
-                        fullText: title,
-                        textColor: Color.white,
-                        tooltip: title,
-                        availableWidth: EditorGUIUtility.currentViewWidth,
-                        averageCharWidth: 6f,
-                        style: LabelStyles.BoldLabel
+                        style: EditorStyles.boldLabel
                     );
 
                     GUILayout.FlexibleSpace();
 
-                    if (itemCount > 0)
+                    // Draw subscript if provided
+                    if (subScriptGetter != null)
                     {
-                        // Draw item count if applicable
-                        Label.Draw(
-                            text: $"({itemCount})",
-                            style: LabelStyles.MiniLabel,
-                            options: GUILayout.Width(EditorGUIUtility.singleLineHeight)
+                        Label.DrawAutoSized(
+                            text: subScriptGetter.Invoke(),
+                            style: LabelStyles.MiniLabel
                         );
                     }
                 }

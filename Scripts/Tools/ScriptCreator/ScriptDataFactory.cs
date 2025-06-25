@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 
 using System.Text;
-using System.Text.RegularExpressions;
 using VT.Extensions;
 
 namespace VT.Tools.ScriptCreator
@@ -22,9 +21,15 @@ namespace VT.Tools.ScriptCreator
 
         public static ScriptData FromContent(string content)
         {
+            string className = TypeNameExtractor.ExtractClassName(content);
+            if (string.IsNullOrWhiteSpace(className))
+            {
+                className = DEFAULT_NAME;
+            }
+
             return new ScriptData
             (
-                className: ExtractClassName(content),
+                className: className,
                 content: content
             );
         }
@@ -45,15 +50,6 @@ namespace VT.Tools.ScriptCreator
             sb.AppendLine("}".Indents());
             sb.AppendLine("}");
             return sb.ToString();
-        }
-
-        public static string ExtractClassName(string content)
-        {
-            if (string.IsNullOrWhiteSpace(content))
-                return string.Empty;
-
-            var match = Regex.Match(content, @"\b(?:class|interface|struct|enum)\s+([A-Za-z_][A-Za-z0-9_]*)");
-            return match.Success ? match.Groups[1].Value : DEFAULT_NAME;
         }
 
         public static ScriptData ProcessScriptContent(string content)

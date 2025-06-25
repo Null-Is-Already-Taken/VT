@@ -8,7 +8,6 @@ using UnityEditor;
 using UnityEditor.AnimatedValues;
 using UnityEngine;
 using VT.Editor.GUI;
-using VT.Editor.Utils;
 using VT.Logger;
 
 namespace VT.ReusableSystems.Events.Editor
@@ -32,14 +31,8 @@ namespace VT.ReusableSystems.Events.Editor
             EventBusUtil.Initialize(); // Ensure initialization is done before we start monitoring
         }
 
-        private void OnDisable()
-        {
-        }
-
         private void OnGUI()
         {
-            Label.Draw("Event Bus Monitor", EditorStyles.boldLabel);
-
             if (EventBusUtil.EventBusTypes == null || EventBusUtil.EventBusTypes.Count == 0)
             {
                 EditorGUILayout.HelpBox("No EventBus types registered. Make sure EventBusUtil.Initialize() has run.", MessageType.Warning);
@@ -55,11 +48,13 @@ namespace VT.ReusableSystems.Events.Editor
             }
         }
 
-        readonly Dictionary<Type, object> eventInstances = new(); // Store per-type temp event data
+        // Store per-type temp event data
+        readonly Dictionary<Type, object> eventInstances = new();
 
-        readonly Dictionary<string, AnimBool> busFoldouts = new();   // remembers toggle state + fade
-        readonly Dictionary<string, AnimBool> callbackFoldouts = new();   // remembers toggle state + fade
-        readonly Dictionary<string, AnimBool> registeredBindingsFoldouts = new();   // remembers toggle state + fade
+        // remembers toggle state + fade
+        readonly Dictionary<string, AnimBool> busFoldouts = new();
+        readonly Dictionary<string, AnimBool> callbackFoldouts = new();
+        readonly Dictionary<string, AnimBool> registeredBindingsFoldouts = new();
 
         private void DrawEventBusEntry(Type busType)
         {
@@ -77,10 +72,11 @@ namespace VT.ReusableSystems.Events.Editor
             // Foldout body for each bound event bus t
             Foldout.Draw(
                 title: typeName,
+                tooltip: $"Event Bus for {typeName}",
                 key: busType.ToString(),
                 foldoutStateCache: busFoldouts,
                 repaintCallback: Repaint,
-                getItemCountFunc: () => bindings.Count(),
+                subScriptGetter: () => $"Subscriber: {bindings.Count()}",
                 drawContentCallback: () =>
                 {
                     // Nested: Callback
@@ -103,10 +99,11 @@ namespace VT.ReusableSystems.Events.Editor
 
             Foldout.Draw(
                 title: "Callback",
+                tooltip: $"Edit and raise {typeName} event",
                 key: $"{busType}.Callback",
                 foldoutStateCache: callbackFoldouts,
                 repaintCallback: Repaint,
-                getItemCountFunc: () => 0,
+                subScriptGetter: null,
                 drawContentCallback: () =>
                 {
                     foreach (var field in eventType.GetFields(BindingFlags.Public | BindingFlags.Instance))
@@ -133,10 +130,11 @@ namespace VT.ReusableSystems.Events.Editor
         {
             Foldout.Draw(
                 title: "Registered Bindings",
+                tooltip: $"List of registered bindings for {busType.Name}",
                 key: $"{busType}.RegisteredBindings",
                 foldoutStateCache: registeredBindingsFoldouts,
                 repaintCallback: Repaint,
-                getItemCountFunc: () => 0,
+                subScriptGetter: null,
                 drawContentCallback: () =>
                 {
                     foreach (var binding in bindings)
@@ -146,13 +144,13 @@ namespace VT.ReusableSystems.Events.Editor
 
                         using (new EditorGUILayout.HorizontalScope())
                         {
-                            Label.DrawAutoSized(label, LabelStyles.Label);
-                            GUILayout.FlexibleSpace();
                             Button.Draw(
-                                content: new GUIContent(EmbeddedIcons.Bell_Unicode),
+                                content: new GUIContent(label),
                                 backgroundColor: Color.white,
-                                onClick: () => EditorGUIUtility.PingObject(ownerObj),
-                                style: ButtonStyles.Inline
+                                onClick: () => {
+                                    EditorGUIUtility.PingObject(ownerObj);
+                                },
+                                style: ButtonStyles.MiniButtonMid
                             );
                         }
                     }
