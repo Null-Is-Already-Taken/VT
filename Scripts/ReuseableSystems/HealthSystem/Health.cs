@@ -1,3 +1,4 @@
+using Sirenix.OdinInspector;
 using UnityEngine;
 using VT.ReusableSystems.Events;
 
@@ -17,6 +18,7 @@ namespace VT.ReusableSystems.HealthSystem
             currentHP = maxHP;
         }
 
+        [Button]
         public void TakeDamage(float amount)
         {
             if (IsDead) return;
@@ -31,6 +33,7 @@ namespace VT.ReusableSystems.HealthSystem
             }
         }
 
+        [Button]
         public void Heal(float amount)
         {
             if (IsDead) return;

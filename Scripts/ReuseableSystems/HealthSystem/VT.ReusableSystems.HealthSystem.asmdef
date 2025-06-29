@@ -2,7 +2,8 @@
     "name": "VT.ReusableSystems.HealthSystem",
     "rootNamespace": "VT.ReusableSystems.HealthSystem",
     "references": [
-        "GUID:6c8c9b5d408f8ad42aee3059a1a31b08"
+        "GUID:6c8c9b5d408f8ad42aee3059a1a31b08",
+        "GUID:8d9e84799a3968d4ba38c55892d14093"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
