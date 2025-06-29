@@ -20,7 +20,8 @@ namespace VT.ReusableSystems.Events
             AssemblyCSharpEditor,
             AssemblyCSharpEditorFirstPass,
             AssemblyCSharpFirstPass,
-            VTReusableSystemsEvents // Custom assembly for VT.ReusableSystems.Events
+            VTReusableSystemsEventsExamples, // Custom assembly for VT.ReusableSystems.Events.Examples
+            VTReusableSystemsHealthSystem, // Custom assembly for VT.ReusableSystems.HealthSystem
         }
 
         /// <summary>
@@ -36,7 +37,8 @@ namespace VT.ReusableSystems.Events
                 "Assembly-CSharp-Editor" => AssemblyType.AssemblyCSharpEditor,
                 "Assembly-CSharp-Editor-firstpass" => AssemblyType.AssemblyCSharpEditorFirstPass,
                 "Assembly-CSharp-firstpass" => AssemblyType.AssemblyCSharpFirstPass,
-                "VT.ReusableSystems.Events" => AssemblyType.VTReusableSystemsEvents, // Custom assembly for VT.ReusableSystems.Events
+                "VT.ReusableSystems.Events.Examples" => AssemblyType.VTReusableSystemsEventsExamples,
+                "VT.ReusableSystems.HealthSystem" => AssemblyType.VTReusableSystemsHealthSystem,
                 _ => null
             };
         }
@@ -47,15 +49,22 @@ namespace VT.ReusableSystems.Events
         /// <param name="assemblyTypes">Array of Type objects representing all the types in the assembly.</param>
         /// <param name="interfaceType">Type representing the interface to be checked against.</param>
         /// <param name="results">Collection of types where result should be added.</param>
-        static void AddTypesFromAssembly(Type[] assemblyTypes, Type interfaceType, ICollection<Type> results)
+        /// <param name="assemblyName">Name of the assembly being processed (for debugging).</param>
+        static void AddTypesFromAssembly(Type[] assemblyTypes, Type interfaceType, ICollection<Type> results, string assemblyName = "Unknown")
         {
-            if (assemblyTypes == null) return;
+            if (assemblyTypes == null) 
+            {
+                return;
+            }
+            
+            int foundCount = 0;
             for (int i = 0; i < assemblyTypes.Length; i++)
             {
                 Type type = assemblyTypes[i];
                 if (type != interfaceType && interfaceType.IsAssignableFrom(type))
                 {
                     results.Add(type);
+                    foundCount++;
                 }
             }
         }
@@ -66,29 +75,34 @@ namespace VT.ReusableSystems.Events
         /// <param name="interfaceType">Interface type to get all the Types for.</param>
         /// <returns>List of Types implementing the provided interface type.</returns>    
         public static List<Type> GetTypes(Type interfaceType)
-        {
+        {            
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
-            Dictionary<AssemblyType, Type[]> assemblyTypes = new Dictionary<AssemblyType, Type[]>();
-            List<Type> types = new List<Type>();
+            Dictionary<AssemblyType, Type[]> assemblyTypes = new();
+            List<Type> types = new();
             for (int i = 0; i < assemblies.Length; i++)
             {
-                AssemblyType? assemblyType = GetAssemblyType(assemblies[i].GetName().Name);
+                string assemblyName = assemblies[i].GetName().Name;
+                AssemblyType? assemblyType = GetAssemblyType(assemblyName);
                 if (assemblyType != null)
                 {
                     assemblyTypes.Add((AssemblyType)assemblyType, assemblies[i].GetTypes());
                 }
             }
 
+            // Second pass: process predefined assemblies in order
             assemblyTypes.TryGetValue(AssemblyType.AssemblyCSharp, out var assemblyCSharpTypes);
-            AddTypesFromAssembly(assemblyCSharpTypes, interfaceType, types);
+            AddTypesFromAssembly(assemblyCSharpTypes, interfaceType, types, "Assembly-CSharp");
 
             assemblyTypes.TryGetValue(AssemblyType.AssemblyCSharpFirstPass, out var assemblyCSharpFirstPassTypes);
-            AddTypesFromAssembly(assemblyCSharpFirstPassTypes, interfaceType, types);
+            AddTypesFromAssembly(assemblyCSharpFirstPassTypes, interfaceType, types, "Assembly-CSharp-firstpass");
 
-            assemblyTypes.TryGetValue(AssemblyType.VTReusableSystemsEvents, out var vtReusableSystemEventsTypes);
-            AddTypesFromAssembly(vtReusableSystemEventsTypes, interfaceType, types);
+            assemblyTypes.TryGetValue(AssemblyType.VTReusableSystemsEventsExamples, out var vtReusableSystemsEventsExamplesTypes);
+            AddTypesFromAssembly(vtReusableSystemsEventsExamplesTypes, interfaceType, types, "VT.ReusableSystems.Events.Examples");
 
+            assemblyTypes.TryGetValue(AssemblyType.VTReusableSystemsHealthSystem, out var vtReusableSystemsHealthSystemTypes);
+            AddTypesFromAssembly(vtReusableSystemsHealthSystemTypes, interfaceType, types, "VT.ReusableSystems.HealthSystem");
+            
             return types;
         }
     }

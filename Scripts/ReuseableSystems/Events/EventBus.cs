@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace VT.ReusableSystems.Events
 {
@@ -13,7 +12,7 @@ namespace VT.ReusableSystems.Events
 
         public static void BindAndRegister(EventBinding<T> binding, Action<T> callback, UnityEngine.Object owner = null)
         {
-            binding = new EventBinding<T>(owner, callback);
+            binding ??= new EventBinding<T>(owner, callback);
             bindings.Add(binding);
         }
 
@@ -33,7 +32,7 @@ namespace VT.ReusableSystems.Events
 
         static void Clear()
         {
-            Debug.Log($"Clearing {typeof(T).Name} bindings");
+            //Debug.Log($"Clearing {typeof(T).Name} bindings");
             bindings.Clear();
         }
     }

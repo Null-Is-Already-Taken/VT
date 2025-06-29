@@ -1,0 +1,16 @@
+{
+    "name": "VT.ReusableSystems.Events.Examples",
+    "rootNamespace": "",
+    "references": [
+        "GUID:6c8c9b5d408f8ad42aee3059a1a31b08"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

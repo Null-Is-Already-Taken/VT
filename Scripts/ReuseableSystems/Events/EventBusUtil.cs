@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using VT.Extensions;
 
 namespace VT.ReusableSystems.Events
 {
@@ -64,10 +65,10 @@ namespace VT.ReusableSystems.Events
                 return;
             }
 
-            Debug.Log("Initializing EventBusUtil...");
+            //Debug.Log("Initializing EventBusUtil...");
             EventTypes = eventTypes;
             EventBusTypes = InitializeAllBuses();
-            Debug.Log($"Initialized {EventTypes.Count} event types and {EventBusTypes.Count} event buses.");
+            //Debug.Log($"Initialized {EventTypes.Count} event types and {EventBusTypes.Count} event buses.");
         }
 
         private static List<Type> InitializeAllBuses()
@@ -79,7 +80,7 @@ namespace VT.ReusableSystems.Events
             {
                 var busType = typedef.MakeGenericType(eventType);
                 eventBusTypes.Add(busType);
-                Debug.Log($"Initialized EventBus<{eventType.Name}>");
+                //Debug.Log($"Initialized EventBus<{eventType.Name}>");
             }
 
             return eventBusTypes;
