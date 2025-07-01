@@ -18,6 +18,7 @@ namespace VT.Utils
         private float lastLoggedProgress = -1f;
         private float lastLoggedTime = -1f;
         private bool isSubscribed = false;
+        private bool hasLoggedInfiniteProgress = false;
 
         private TimerLogger(Timer timer)
         {
@@ -79,6 +80,7 @@ namespace VT.Utils
         {
             lastLoggedProgress = -1f;
             lastLoggedTime = -1f;
+            hasLoggedInfiniteProgress = false;
             Debug.Log($"[{timerName}] Timer started.");
         }
 
@@ -88,7 +90,6 @@ namespace VT.Utils
             {
                 if (timer.Duration >= 0f)
                 {
-                    // positive-duration case → Left is float
                     float change = Mathf.Abs(progress - lastLoggedProgress);
                     if (lastLoggedProgress < 0f || change >= progressLogThreshold)
                     {
@@ -98,8 +99,11 @@ namespace VT.Utils
                 }
                 else
                 {
-                    // negative-duration case → Right is string
-                    Debug.Log($"[{timerName}] Progress: N/A");
+                    if (!hasLoggedInfiniteProgress)
+                    {
+                        Debug.Log($"[{timerName}] Progress: N/A");
+                        hasLoggedInfiniteProgress = true;
+                    }
                 }
             }
 

@@ -149,6 +149,10 @@ namespace VT.Utils.Tests
                 Timer pauseAndResumeTimer = BuildPauseAndResumeTimer(currentTimer, pauseDuration);
                 pauseAndResumeTimer.Start();
             }
+            else
+            {
+                Debug.Log("Current timer is not running");
+            }
         }
 
         [Button]
