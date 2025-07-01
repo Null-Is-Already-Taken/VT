@@ -1,6 +1,5 @@
 using Sirenix.OdinInspector;
 using UnityEngine;
-using VT.Utils;
 
 namespace VT.Utils.Tests
 {
@@ -9,76 +8,82 @@ namespace VT.Utils.Tests
         [SerializeField] private float duration;
         private Timer currentTimer;
 
-        private Timer BuildBasicTimer()
+        private Timer BuildExternalRunnerTimer()
         {
-            Debug.Log("--- Basic Timer Example ---");
+            Timer basicTimer = Timer.Create()
+                .SetDuration(duration)
+                .WithRunner(this);
+
+            TimerLogger.Attach(basicTimer)
+                .WithName("External Runner")
+                .LogProgress();
             
-            var basicTimer = new Timer(this);
-            basicTimer.New(
-                duration: duration,
-                onStart: () => Debug.Log("Basic timer started!"),
-                onUpdate: progress => Debug.Log($"Basic timer progress: {progress:P0}"),
-                onComplete: () => Debug.Log("Basic timer completed!")
-            );
             return basicTimer;
         }
 
         private Timer BuildFluentTimer()
         {
-            Debug.Log("--- Fluent API Timer Example ---");
+            Timer fluentTimer = Timer.Create()
+                .SetDuration(duration);
 
-            Timer fluentTimer = new Timer(this)
-                .SetDuration(duration)
-                .OnStart(() => Debug.Log("Fluent timer started!"))
-                .LogProgress()
-                .OnComplete(() => Debug.Log("Fluent timer completed!"));
-            
+            TimerLogger.Attach(fluentTimer)
+                .WithName("Fluent")
+                .LogProgress();
+
             return fluentTimer;
         }
 
         private Timer BuildInfiniteTimer()
         {
-            Debug.Log("--- Infinite Timer Example ---");
+            Timer infiniteTimer = Timer.Create()
+                .RunIndefinitely(); // Infinite duration
 
-            Timer infiniteTimer = new Timer(this)
-                .Infinite() // Infinite duration
-                .OnStart(() => Debug.Log("Infinite timer started!"))
-                .LogTimeElapsed();
+            TimerLogger.Attach(infiniteTimer)
+                .WithName("Infinite")
+                .LogProgress()
+                .LogTime();
 
             return infiniteTimer;
         }
 
         private Timer BuildOneShotTimer()
         {
-            Debug.Log("--- One-Shot Timer Example ---");
+            Timer oneShotTimer = Timer.Create()
+                .SetDuration(duration)
+                .AutoDispose();
 
-            Timer oneShotTimer = new Timer(this, oneShot: true)
-                .SetDuration(2f)
-                .OnStart(() => Debug.Log("One-shot timer started!"))
-                .OnComplete(() => Debug.Log("One-shot timer completed and auto-disposed!"));
+            TimerLogger.Attach(oneShotTimer)
+                .WithName("Infinite")
+                .LogProgress();
 
             return oneShotTimer;
         }
 
         private Timer BuildPauseAndResumeTimer(Timer targetTimer, float resumeAfterSeconds)
         {
-            Timer pauseAndResumeTimer = new Timer(this)
+            Timer pauseAndResumeTimer = Timer.Create()
                 .SetDuration(resumeAfterSeconds)
                 .OnStart(() => targetTimer.Pause())
                 .OnComplete(() => targetTimer.Resume())
                 .AutoDispose();
 
+            TimerLogger.Attach(pauseAndResumeTimer)
+                .WithName("Pause & Resume")
+                .LogTime();
+
             return pauseAndResumeTimer;
         }
 
         [Button]
-        public void TestBasicTimer()
+        public void ExternalRunnerTimer()
         {
             if (currentTimer != null && currentTimer.IsRunning)
             {
                 currentTimer.Stop();
             }
-            currentTimer = BuildBasicTimer();
+
+            Debug.Log("--- External Runner Timer Example ---");
+            currentTimer = BuildExternalRunnerTimer();
             currentTimer.Start();
         }
 
@@ -89,6 +94,8 @@ namespace VT.Utils.Tests
             {
                 currentTimer.Stop();
             }
+
+            Debug.Log("--- Fluent API Timer Example ---");
             currentTimer = BuildFluentTimer();
             currentTimer.Start();
         }
@@ -100,6 +107,8 @@ namespace VT.Utils.Tests
             {
                 currentTimer.Stop();
             }
+
+            Debug.Log("--- Infinite Timer Example ---");
             currentTimer = BuildInfiniteTimer();
             currentTimer.Start();
         }
@@ -110,7 +119,10 @@ namespace VT.Utils.Tests
             {
                 currentTimer.Stop();
             }
+
+            Debug.Log("--- One Shot Timer Example ---");
             currentTimer = BuildOneShotTimer();
+            currentTimer.Start();
         }
 
         [Button]
@@ -118,6 +130,7 @@ namespace VT.Utils.Tests
         {
             if (currentTimer != null && currentTimer.IsRunning)
             {
+                Debug.Log("--- Restart Timer Example ---");
                 currentTimer.Restart();
             }
             else

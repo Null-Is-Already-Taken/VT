@@ -60,6 +60,9 @@ namespace VT.Monads
         public L Left => IsLeft ? left : throw new InvalidOperationException("No Left present");
         public R Right => IsRight ? right : throw new InvalidOperationException("No Right present");
 
+        public static implicit operator Either<L, R>(L l) => new(l);
+        public static implicit operator Either<L, R>(R r) => new(r);
+
         private Either(L left)
         {
             this.left = left;

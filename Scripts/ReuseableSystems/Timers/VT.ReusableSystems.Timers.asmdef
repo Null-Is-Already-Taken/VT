@@ -1,0 +1,16 @@
+{
+    "name": "VT.ReusableSystems.Timers",
+    "rootNamespace": "VT.ReusableSystems.Timers",
+    "references": [
+        "GUID:fcf4261bbe51da94b8a97c0b644c4f2f"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
