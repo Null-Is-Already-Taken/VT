@@ -1,0 +1,19 @@
+{
+    "name": "VT.ReusableSystems.SkillSystem",
+    "rootNamespace": "",
+    "references": [
+        "GUID:6c8c9b5d408f8ad42aee3059a1a31b08",
+        "GUID:fe51ac21b1b1ef54c9c0f16167147b5f",
+        "GUID:75469ad4d38634e559750d17036d5f7c",
+        "GUID:4d503d00534bc422daca68ea919fbf60"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

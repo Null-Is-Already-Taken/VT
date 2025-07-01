@@ -41,5 +41,10 @@ namespace VT.ReusableSystems.HealthSystem
             currentHP = Mathf.Min(currentHP + amount, maxHP);
             EventBus<HealReceivedEvent>.Raise(new HealReceivedEvent { Target = gameObject, Amount = amount });
         }
+
+        public void SetMaxHP(float amount)
+        {
+            maxHP = amount;
+        }
     }
 }
