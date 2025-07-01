@@ -1,185 +1,299 @@
 using System;
 using System.Collections;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace VT.Utils
 {
     public class Timer : IDisposable
     {
-        private MonoBehaviour monoBehaviour;
-        private Coroutine timerCoroutine;
-        private float timerDuration;
-        private Action onTimerComplete;
-        private Action<float> onTimerUpdate;
-        private float timeElapsedInSeconds;
-        private bool pause;
+        #region Events
+        private event Action OnStarted = () => { };
+        private event Action<float> OnUpdated = _ => { };
+        private event Action OnCompleted = () => { };
+        #endregion
 
-        private GameObject ownedObject;
-        private bool oneShot;
-        private bool isDisposed;
+        #region Public Properties
+        public float Duration { get; private set; } = -1f;
+        public float Elapsed { get; private set; } = 0f;
+        public float Progress => Duration > 0f ? Mathf.Clamp01(Elapsed / Duration) : 0f;
+        public bool IsRunning { get; private set; } = false;
+        #endregion
 
-        public float TimeElapsedInSeconds => timeElapsedInSeconds;
-        public float TimeLeft => timerDuration - timeElapsedInSeconds;
+        #region Internal State
+        private bool autoDispose = false;
+        private bool isDisposed = false;
+        private bool useUnscaledTime = false;
 
-        public Timer(MonoBehaviour monoBehaviour = null, bool oneShot = false)
+        private MonoBehaviour runner;
+        private GameObject runnerGameObject;
+        private Coroutine tickRoutine;
+        #endregion
+
+        #region Constructors & Factory
+        private Timer() { }
+
+        public static Timer Create(float seconds, MonoBehaviour runner = null)
         {
-            if (monoBehaviour == null)
-            {
-                ownedObject = new GameObject("TimerObject");
-                this.monoBehaviour = ownedObject.AddComponent<DummyMonoBehaviour>();
-            }
-            else
-            {
-                this.monoBehaviour = monoBehaviour;
-            }
+            return new Timer()
+                .SetDuration(seconds)
+                .WithRunner(runner);
+        }
+        #endregion
 
-            this.oneShot = oneShot;
-            isDisposed = false;
+        #region Configuration Methods
+        public Timer SetDuration(float seconds)
+        {
+            EnsureConfigurable();
+            if (seconds < 0f && seconds != -1f)
+            {
+                Debug.LogWarning("Timer duration cannot be negative. Using -1 for infinite duration.");
+                Duration = -1;
+                return this;
+            }
+            Duration = seconds;
+            return this;
         }
 
-        public float Progress => timerDuration > 0f ? Mathf.Clamp01(timeElapsedInSeconds / timerDuration) : -1f;
-
-        public void Pause()
+        public Timer RunIndefinitely()
         {
-            pause = true;
+            EnsureConfigurable();
+            return SetDuration(-1f);
         }
 
-        public void Resume()
+        public Timer OnStart(Action onStart)
         {
-            pause = false;
+            EnsureConfigurable();
+            OnStarted += onStart;
+            return this;
         }
 
-        /// <summary>
-        /// Starts a timer with a specified duration and completion callback.
-        /// </summary>
-        /// <param name="duration">Duration in seconds.</param>
-        /// <param name="onComplete">Callback when the timer completes.</param>
-        /// <param name="onUpdate">Callback invoked each frame with the elapsed time as parameter (optional).</param>
-        public void StartTimer(float duration, Action onComplete, Action<float> onUpdate = null)
+        public Timer OnUpdate(Action<float> onUpdate)
         {
-            if (isDisposed)
+            EnsureConfigurable();
+            OnUpdated += onUpdate;
+            return this;
+        }
+
+        public Timer OnComplete(Action onComplete)
+        {
+            EnsureConfigurable();
+            OnCompleted += onComplete;
+            return this;
+        }
+
+        public Timer WithRunner(MonoBehaviour runner)
+        {
+            EnsureConfigurable();
+            if (runner == null)
+                return this;
+
+            this.runner = runner;
+            if (runnerGameObject != null)
             {
-                Debug.LogWarning("Attempted to start a disposed timer.");
-                return;
+                UnityEngine.Object.Destroy(runnerGameObject);
+                runnerGameObject = null;
             }
 
-            if (duration < 0f && duration != -1f)
+            return this;
+        }
+
+        public Timer UseUnscaledTime(bool useUnscaledTime)
+        {
+            EnsureConfigurable();
+
+            this.useUnscaledTime = useUnscaledTime;
+            return this;
+        }
+
+        public Timer LogProgress()
+        {
+            EnsureConfigurable();
+
+            OnUpdated += progress => Debug.Log($"Progress: {progress:P0}");
+            return this;
+        }
+
+        public Timer LogTimeElapsed()
+        {
+            EnsureConfigurable();
+
+            OnUpdated += _ => Debug.Log($"Time Elapsed: {Elapsed}");
+            return this;
+        }
+
+        public Timer AutoDispose()
+        {
+            EnsureConfigurable();
+
+            autoDispose = true;
+            return this;
+        }
+        #endregion
+
+        #region Control Methods
+        public void Start()
+        {
+            EnsureAvailable();
+            if (Duration < 0f && Duration != -1f)
             {
                 Debug.LogWarning("Timer duration cannot be negative. Using -1 for infinite duration.");
                 return;
             }
 
-            StopTimer();
-            timerDuration = duration;
-            onTimerComplete = onComplete;
-            onTimerUpdate = onUpdate;
+            Stop();
+            EnsureRunner();
+            Elapsed = 0f;
+            IsRunning = true;
+            OnStarted.Invoke();
 
-            if (duration == 0f) // if duration is 0, complete immediately
+            if (Duration == 0f) // if duration is 0, complete immediately
             {
-                onTimerUpdate?.Invoke(1f);
-                onTimerComplete?.Invoke();
-                if (oneShot)
+                OnUpdated.Invoke(1f);
+                OnCompleted.Invoke();
+                if (autoDispose)
                     Dispose();
                 return;
             }
 
-            timerCoroutine = monoBehaviour.StartCoroutine(TimerCoroutine());
+            tickRoutine = runner.StartCoroutine(Tick());
         }
 
-        public void RestartTimer()
+        public void Pause()
+        {
+            EnsureAvailable();
+            IsRunning = false;
+        }
+
+        public void Resume()
+        {
+            EnsureAvailable();
+            IsRunning = true;
+        }
+
+        public void Reset()
+        {
+            EnsureAvailable();
+            IsRunning = false;
+            Elapsed = 0f;
+        }
+
+        public void Restart()
+        {
+            EnsureAvailable();
+            if (tickRoutine != null && IsRunning)
+                Stop();
+
+            Start();
+        }
+
+        public void Stop()
+        {
+            EnsureAvailable();
+            if (tickRoutine != null)
+            {
+                runner.StopCoroutine(tickRoutine);
+                tickRoutine = null;
+            }
+            IsRunning = false;
+        }
+        #endregion
+
+        #region Disposal
+        public void Dispose()
+        {
+            EnsureAvailable();
+            Stop();
+
+            OnStarted = null;
+            OnUpdated = null;
+            OnCompleted = null;
+
+            if (runnerGameObject != null)
+            {
+                UnityEngine.Object.Destroy(runnerGameObject);
+                runnerGameObject = null;
+            }
+
+            runner = null;
+            IsRunning = false;
+            isDisposed = true;
+        }
+        #endregion
+
+        #region Private Helpers
+        private void EnsureAvailable()
         {
             if (isDisposed)
-            {
-                Debug.LogWarning("Attempted to restart a disposed timer.");
-                return;
-            }
-
-            if (timerCoroutine != null)
-            {
-                StopTimer();
-            }
-
-            StartTimer(timerDuration, onTimerComplete, onTimerUpdate);
+                throw new ObjectDisposedException(nameof(Timer));
         }
 
-        /// <summary>
-        /// Stops the timer if it's currently running.
-        /// </summary>
-        public void StopTimer()
+        private void EnsureConfigurable([CallerMemberName] string method = null)
         {
-            if (isDisposed)
-            {
-                Debug.LogWarning("Attempted to stop a disposed timer.");
-                return;
-            }
+            EnsureAvailable();
 
-            if (timerCoroutine != null)
-            {
-                monoBehaviour.StopCoroutine(timerCoroutine);
-                timerCoroutine = null;
-            }
+            if (IsRunning)
+                throw new InvalidOperationException($"Cannot call '{method}' while the timer is running. Stop first.");
         }
 
+        private void EnsureRunner()
+        {
+            if (runner == null)
+            {
+                runnerGameObject = new GameObject("Timer Runner");
+                runnerGameObject.hideFlags = HideFlags.HideAndDontSave;
+                runner = runnerGameObject.AddComponent<TimerRunnerMonoBehaviour>();
+            }
+        }
+        #endregion
+
+        #region Public Helpers
         public override string ToString()
         {
-            return ToDisplayString(timeElapsedInSeconds);
+            return ToTimerString(Elapsed);
         }
 
-        public static string ToDisplayString(float seconds)
+        public static string ToTimerString(float seconds)
         {
             TimeSpan timeSpan = TimeSpan.FromSeconds(seconds);
             return string.Format("{0:D2}:{1:D2}", timeSpan.Minutes, timeSpan.Seconds);
         }
+        #endregion
 
+        #region Coroutine
         /// <summary>
         /// Coroutine that handles the timer countdown and triggers events.
         /// </summary>
-        private IEnumerator TimerCoroutine()
+        private IEnumerator Tick()
         {
-            timeElapsedInSeconds = 0f;
+            Elapsed = 0f;
 
             // If timerDuration is -1, run indefinitely; otherwise, run until timeElapsedInSeconds >= timerDuration.
-            while (timerDuration == -1f || timeElapsedInSeconds < timerDuration)
+            while (Duration == -1f || Elapsed < Duration)
             {
-                if (!pause)
+                if (IsRunning)
                 {
-                    timeElapsedInSeconds += Time.deltaTime;
+                    Elapsed += useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
 
                     // Avoid division by zero when timerDuration is 0 or less
-                    onTimerUpdate?.Invoke(Progress); // Pass normalized progress (0 to 1)
+                    OnUpdated.Invoke(Progress); // Pass normalized progress (0 to 1)
                 }
 
                 yield return null;
             }
 
             // Invoke completion callback once the timer ends
-            onTimerComplete?.Invoke();
-            timerCoroutine = null;
-            if (oneShot)
+            OnCompleted.Invoke();
+            tickRoutine = null;
+            IsRunning = false;
+
+            if (autoDispose)
             {
                 Dispose(); // Clean up if one-shot timer
             }
         }
+        #endregion
 
-        public void Dispose()
-        {
-            if (isDisposed) return;
-
-            StopTimer();
-            onTimerComplete = null;
-            onTimerUpdate = null;
-
-            if (ownedObject != null)
-            {
-                UnityEngine.Object.Destroy(ownedObject);
-                ownedObject = null;
-            }
-
-            monoBehaviour = null;
-
-            isDisposed = true;
-        }
-
-        private class DummyMonoBehaviour : MonoBehaviour { }
+        private class TimerRunnerMonoBehaviour : MonoBehaviour { }
     }
 }
