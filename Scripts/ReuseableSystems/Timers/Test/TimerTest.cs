@@ -1,7 +1,8 @@
 using Sirenix.OdinInspector;
 using UnityEngine;
+using VT.ReusableSystems.Timers.Utils;
 
-namespace VT.Utils.Tests
+namespace VT.ReusableSystems.Timers.Test
 {
     public class TimerTest : MonoBehaviour
     {

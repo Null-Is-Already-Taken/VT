@@ -3,7 +3,7 @@ using System.Collections;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
-namespace VT.Utils
+namespace VT.ReusableSystems.Timers
 {
     /// <summary>
     /// A flexible timer utility that provides countdown functionality with event callbacks.
@@ -86,6 +86,8 @@ namespace VT.Utils
         private bool isDisposed = false;
         private bool useUnscaledTime = false;
 
+        private float delay = 0f;
+
         private MonoBehaviour runner;
         private GameObject runnerGameObject;
         private Coroutine tickRoutine;
@@ -136,6 +138,19 @@ namespace VT.Utils
                 return this;
             }
             Duration = seconds;
+            return this;
+        }
+
+        public Timer SetDelay(float delay)
+        {
+            EnsureConfigurable();
+            if (delay < 0f)
+            {
+                Debug.LogWarning("Timer delay cannot be negative. Default to 0 delay.");
+                this.delay = 0f;
+                return this;
+            }
+            this.delay = delay;
             return this;
         }
 
@@ -275,20 +290,6 @@ namespace VT.Utils
             EnsureAvailable();
             Stop();
             EnsureRunner();
-            IsRunning = true;
-            OnStarted?.Invoke();
-
-            if (Duration == 0f) // if duration is 0, complete immediately
-            {
-                Elapsed = Duration;
-                OnUpdated?.Invoke(1f);
-                OnCompleted?.Invoke();
-                IsRunning = false;
-                if (autoDispose)
-                    Dispose();
-                return;
-            }
-
             tickRoutine = runner.StartCoroutine(Tick());
         }
 
@@ -390,6 +391,7 @@ namespace VT.Utils
                 runnerGameObject = null;
             }
 
+            delay = 0;
             runner = null;
             IsRunning = false;
             isDisposed = true;
@@ -457,12 +459,44 @@ namespace VT.Utils
         /// </remarks>
         private IEnumerator Tick()
         {
+            IsRunning = true;
+
+            if (Duration == 0f) // if duration is 0, complete immediately
+            {
+                Elapsed = Duration;
+                OnStarted?.Invoke();
+                OnUpdated?.Invoke(1f);
+                OnCompleted?.Invoke();
+                tickRoutine = null;
+                IsRunning = false;
+                if (autoDispose)
+                    Dispose();
+                yield break;
+            }
+
+            // If delay is positive, decrement time left to start
+            float timeLeftToStart = delay;
+            while (timeLeftToStart > 0f)
+            {
+                if (isDisposed) 
+                    yield break;
+
+                if (IsRunning)
+                    timeLeftToStart -= useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
+
+                yield return null;
+            }
+
             Elapsed = 0f;
+            OnStarted?.Invoke();
             OnUpdated?.Invoke(0f);
 
             // If timerDuration is -1, run indefinitely; otherwise, run until timeElapsedInSeconds >= timerDuration.
             while (Duration == -1f || Elapsed < Duration)
             {
+                if (isDisposed)
+                    yield break;
+
                 if (IsRunning)
                 {
                     Elapsed += useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
@@ -481,10 +515,9 @@ namespace VT.Utils
             tickRoutine = null;
             IsRunning = false;
 
+            // Clean up if one-shot timer
             if (autoDispose)
-            {
-                Dispose(); // Clean up if one-shot timer
-            }
+                Dispose();
         }
         #endregion
 

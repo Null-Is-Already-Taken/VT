@@ -1,8 +1,7 @@
 ﻿using System;
 using UnityEngine;
-using VT.Monads;
 
-namespace VT.Utils
+namespace VT.ReusableSystems.Timers.Utils
 {
     /// <summary>
     /// Provides configurable logging for a Timer.
@@ -123,4 +122,4 @@ namespace VT.Utils
             Debug.Log($"[{timerName}] Timer completed.");
         }
     }
-} 
+}
