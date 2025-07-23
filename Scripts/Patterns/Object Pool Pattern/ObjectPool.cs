@@ -9,12 +9,19 @@ namespace VT.Patterns.ObjectPoolPattern
         void OnReturnedToPool();
     }
 
-    public class ObjectPool<T> where T : Component
+    public class ObjectPool<T> where T : PooledObject
     {
-        public ObjectPool(T prefab, Transform parent = null)
+        public string PrefabName => prefab.name;
+
+        public static ObjectPool<T> Create(T prefab, Transform parent = null)
         {
-            this.prefab = prefab;
-            this.parent = parent;
+            if (prefab == null) return null;
+            ObjectPool<T> pool = new()
+            {
+                prefab = prefab,
+                parent = parent
+            };
+            return pool;
         }
 
         public int Count => pool.Count;
@@ -112,9 +119,9 @@ namespace VT.Patterns.ObjectPoolPattern
             }
         }
 
-        protected readonly T prefab;
-        protected readonly Stack<T> pool = new();
-        protected readonly Transform parent;
-        protected readonly Dictionary<T, IPoolable> poolableCache = new();
+        protected T prefab;
+        protected Stack<T> pool = new();
+        protected Transform parent;
+        protected Dictionary<T, IPoolable> poolableCache = new();
     }
 }

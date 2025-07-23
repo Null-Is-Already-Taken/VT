@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
+/// WIP
+/// TODO: Implement a monitored object pool that tracks usage over time and shrinks the pool if usage drops below a certain threshold.
 namespace VT.Patterns.ObjectPoolPattern.Extras
 {
-    public class MonitoredObjectPool<T> : ObjectPool<T> where T : Component
+    public class MonitoredObjectPool<T> : ObjectPool<T> where T : PooledObject
     {
         public MonitoredObjectPool(
             T prefab,

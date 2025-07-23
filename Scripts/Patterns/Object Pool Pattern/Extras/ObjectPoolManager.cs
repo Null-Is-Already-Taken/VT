@@ -8,24 +8,20 @@ namespace VT.Patterns.ObjectPoolPattern.Extras
     {
         private readonly Dictionary<string, object> pools = new();
 
-        public void AddPool<T>(string poolName, ObjectPool<T> pool) where T : Component
+        public void AddPool<T>(ObjectPool<T> pool) where T : PooledObject
         {
-            if (string.IsNullOrEmpty(poolName))
+            if (pools.ContainsKey(pool.PrefabName))
             {
-                Debug.LogWarning("poolName [" + poolName + "] is null/empty. Using prefab name as pool name.");
-                poolName = pool.Get().name + "Pool";
+                Debug.LogWarning($"Pool with name {pool.PrefabName} already exists. Overwriting.");
             }
 
-            if (pools.ContainsKey(poolName))
-            {
-                Debug.LogWarning($"Pool with name {poolName} already exists. Overwriting.");
-            }
-
-            pools[poolName] = pool;
+            pools[pool.PrefabName] = pool;
         }
 
-        public ObjectPool<T> GetPool<T>(string poolName) where T : Component
+        public ObjectPool<T> GetPool<T>(T prefab) where T : PooledObject
         {
+            string poolName = GeneratePoolName(prefab);
+
             if (pools.TryGetValue(poolName, out var poolObj) && poolObj is ObjectPool<T> pool)
             {
                 return pool;
@@ -35,11 +31,28 @@ namespace VT.Patterns.ObjectPoolPattern.Extras
             return null;
         }
 
-        public ObjectPool<T> CreatePool<T>(string poolName, T prefab, Transform parent = null) where T : Component
+        public ObjectPool<T> CreatePool<T>(T prefab, Transform parent = null) where T : PooledObject
         {
-            ObjectPool<T> pool = new(prefab, parent);
-            AddPool(poolName, pool);
+            string poolName = GeneratePoolName(prefab);
+
+            if (parent == null)
+            {
+                parent = new GameObject(poolName).transform;
+            }
+
+            ObjectPool<T> pool = ObjectPool<T>.Create(prefab, parent);
+            AddPool(pool);
             return pool;
+        }
+
+        public static string GeneratePoolName(PooledObject prefab)
+        {
+            return GeneratePoolName(prefab.name);
+        }
+
+        public static string GeneratePoolName(string prefabName)
+        {
+            return prefabName + " Pool";
         }
     }
 }
