@@ -1,127 +1,182 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace VT.Patterns.ObjectPoolPattern
 {
-    public interface IPoolable
+    #region Interfaces
+
+    public interface IPooledObject
     {
+        string Name { get; }
+        GameObject GameObject { get; }
         void OnSpawned();
         void OnReturnedToPool();
     }
 
-    public class ObjectPool<T> where T : PooledObject
+    public interface IObjectPool : IDisposable
     {
-        public string PrefabName => prefab.name;
+        IPooledObject Prefab { get; }
+        Transform Parent { get; }
+        public int Count { get; }
+
+        T GetCasted<T>() where T : MonoBehaviour, IPooledObject;
+        IPooledObject Get();
+        void Return(IPooledObject item);
+        bool TryGet(out IPooledObject item);
+        void Preload(int count);
+        void Clear();
+    }
+
+    #endregion
+
+    public class ObjectPool<T> : IObjectPool where T : MonoBehaviour, IPooledObject
+    {
+        #region Factory
 
         public static ObjectPool<T> Create(T prefab, Transform parent = null)
         {
             if (prefab == null) return null;
-            ObjectPool<T> pool = new()
+            if (parent == null)
             {
-                prefab = prefab,
-                parent = parent
-            };
-            return pool;
+                parent = new GameObject($"{prefab.name} Pool").transform;
+            }
+            return new(prefab, parent);
         }
 
+        #endregion
+
+        public event Action<IPooledObject> OnGet = _ => { };
+        public event Action<IPooledObject> OnReturned = _ => { };
+
+        #region IObjectPool Implementation
+
+        public IPooledObject Prefab => prefab;
+        public Transform Parent => parent;
         public int Count => pool.Count;
 
-        public T Get()
-        {
-            T item;
+        public U GetCasted<U>() where U : MonoBehaviour, IPooledObject => (U)Get();
 
+        public IPooledObject Get()
+        {
+            IPooledObject item;
             if (pool.Count > 0)
             {
                 item = pool.Pop();
             }
             else
             {
-                item = Object.Instantiate(prefab, parent);
+                var go = UnityEngine.Object.Instantiate(prefab, parent);
+                go.name = prefab.name;
+                item = go.GetComponent<T>();
             }
 
-            Activate(item, active: true);
+            Activate(item);
+            OnGet.Invoke(item);
             return item;
         }
 
-        public bool TryGet(out T item)
+        public void Return(IPooledObject item)
+        {
+            if (item == null) return;
+            Deactivate(item);
+            OnReturned.Invoke(item);
+            pool.Push(item);
+        }
+
+        public bool TryGet(out IPooledObject item)
         {
             if (pool.Count > 0)
             {
                 item = pool.Pop();
-                Activate(item, active: true);
+                Activate(item);
+                OnGet.Invoke(item);
                 return true;
             }
             item = null;
             return false;
         }
 
-        public void Return(T item)
+        public void Preload(int count)
         {
-            if (item == null) return;
-
-            Activate(item, active: false);
-            pool.Push(item);
+            for (int i = 0; i < count; i++)
+            {
+                T item = UnityEngine.Object.Instantiate(prefab, parent);
+                item.name = prefab.name;
+                //Return(item);
+                Deactivate(item);
+                pool.Push(item);
+            }
         }
 
         public void Clear()
         {
             while (pool.Count > 0)
             {
-                Object.Destroy(pool.Pop().gameObject);
+                UnityEngine.Object.Destroy(pool.Pop().GameObject);
             }
         }
 
-        public void Preload(int count)
+        public void ClearAndDestroy()
         {
-            for (int i = 0; i < count; i++)
-            {
-                T item = Object.Instantiate(prefab, parent);
-                Return(item);
-            }
+            Clear();
+            UnityEngine.Object.Destroy(parent.gameObject);
         }
 
-        /// <summary>
-        /// Override this method to handle additional logic when an object is retrieved from the pool
-        /// </summary>
-        /// <param name="item"></param>
-        protected virtual void OnObjectGet(T item)
+        #endregion
+
+        #region IDisposable Implementation
+
+        public void Dispose()
         {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
-        private void Activate(T item, bool active)
+        protected virtual void Dispose(bool disposing)
         {
-            if (item == null || item.gameObject == null)
+            if (!isDisposed && disposing)
             {
-                poolableCache.Remove(item);
-                return;
-            }
-
-            item.transform.SetParent(active ? null : parent, active);
-            item.gameObject.SetActive(active);
-
-            if (!poolableCache.TryGetValue(item, out var poolable))
-            {
-                poolable = item.GetComponent<IPoolable>();
-
-                if (poolable != null)
-                {
-                    poolableCache[item] = poolable;
-                }
-            }
-
-            if (active)
-            {
-                poolable?.OnSpawned();
-            }
-            else
-            {
-                poolable?.OnReturnedToPool();
+                ClearAndDestroy();
+                OnGet = _ => { };
+                OnReturned = _ => { };
+                isDisposed = true;
             }
         }
 
-        protected T prefab;
-        protected Stack<T> pool = new();
-        protected Transform parent;
-        protected Dictionary<T, IPoolable> poolableCache = new();
+        ~ObjectPool() => Dispose(false);
+
+        #endregion
+
+        #region Private
+
+        private readonly T prefab;
+        private readonly Stack<IPooledObject> pool = new();
+        private readonly Transform parent;
+        private bool isDisposed = false;
+
+        private ObjectPool(T prefab, Transform parent)
+        {
+            this.prefab = prefab;
+            this.parent = parent;
+        }
+
+        private void Activate(IPooledObject item)
+        {
+            if (item == null) return;
+            item.GameObject.transform.SetParent(null, true);
+            item.GameObject.SetActive(true);
+            item.OnSpawned();
+        }
+
+        private void Deactivate(IPooledObject item)
+        {
+            if (item == null) return;
+            item.GameObject.transform.SetParent(parent, true);
+            item.GameObject.SetActive(false);
+            item.OnReturnedToPool();
+        }
+
+        #endregion
     }
 }
