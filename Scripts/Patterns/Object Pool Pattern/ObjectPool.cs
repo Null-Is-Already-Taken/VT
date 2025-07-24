@@ -34,14 +34,10 @@ namespace VT.Patterns.ObjectPoolPattern
     {
         #region Factory
 
-        public static ObjectPool<T> Create(T prefab, Transform parent = null)
+        public static ObjectPool<T> Create(T prefab)
         {
             if (prefab == null) return null;
-            if (parent == null)
-            {
-                parent = new GameObject($"{prefab.name} Pool").transform;
-            }
-            return new(prefab, parent);
+            return new(prefab);
         }
 
         #endregion
@@ -67,7 +63,7 @@ namespace VT.Patterns.ObjectPoolPattern
             else
             {
                 var go = UnityEngine.Object.Instantiate(prefab, parent);
-                go.name = prefab.name;
+                go.name = prefab.Name;
                 item = go.GetComponent<T>();
             }
 
@@ -148,20 +144,27 @@ namespace VT.Patterns.ObjectPoolPattern
 
         #endregion
 
-        #region Private
+        #region Protected
 
-        private readonly T prefab;
-        private readonly Stack<IPooledObject> pool = new();
-        private readonly Transform parent;
-        private bool isDisposed = false;
+        protected T prefab;
+        protected Stack<IPooledObject> pool = new();
+        protected Transform parent;
+        protected bool isDisposed = false;
 
-        private ObjectPool(T prefab, Transform parent)
+        protected ObjectPool(T prefab)
         {
             this.prefab = prefab;
-            this.parent = parent;
+            parent = new GameObject($"{prefab.name} Pool").transform;
         }
 
-        private void Activate(IPooledObject item)
+        protected T CreateNew()
+        {
+            var go = UnityEngine.Object.Instantiate(prefab, parent);
+            go.name = prefab.Name;
+            return go;
+        }
+
+        protected void Activate(IPooledObject item)
         {
             if (item == null) return;
             item.GameObject.transform.SetParent(null, true);
@@ -169,7 +172,7 @@ namespace VT.Patterns.ObjectPoolPattern
             item.OnSpawned();
         }
 
-        private void Deactivate(IPooledObject item)
+        protected void Deactivate(IPooledObject item)
         {
             if (item == null) return;
             item.GameObject.transform.SetParent(parent, true);

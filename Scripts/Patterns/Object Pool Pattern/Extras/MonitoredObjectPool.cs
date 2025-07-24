@@ -7,16 +7,22 @@ using System.Linq;
 /// TODO: Implement a monitored object pool that tracks usage over time and shrinks the pool if usage drops below a certain threshold.
 namespace VT.Patterns.ObjectPoolPattern.Extras
 {
-    public class MonitoredObjectPool<T> : ObjectPool<T> where T : PooledObject
+    public class MonitoredObjectPool<T> : ObjectPool<T> where T : MonoBehaviour, IPooledObject
     {
-        public MonitoredObjectPool(
+        public static new MonitoredObjectPool<T> Create(T prefab)
+        {
+            if (prefab == null) return null;
+            return new(prefab);
+        }
+
+        protected MonitoredObjectPool(
             T prefab,
-            Transform parent,
-            MonoBehaviour monitorHost,
+            MonoBehaviour monitorHost = null,
             int historyLength = 5,
             float monitorInterval = 60f
-        ) : base(prefab, parent)
+        ) : base(prefab)
         {
+            this.prefab = prefab;
             this.historyLength = historyLength;
             this.monitorInterval = monitorInterval;
 
@@ -24,12 +30,6 @@ namespace VT.Patterns.ObjectPoolPattern.Extras
             {
                 monitoringCoroutine = monitorHost.StartCoroutine(MonitorUsage());
             }
-        }
-
-        protected override void OnObjectGet(T item)
-        {
-            base.OnObjectGet(item);
-            currentUsageThisInterval++;
         }
 
         private IEnumerator MonitorUsage()
@@ -61,7 +61,7 @@ namespace VT.Patterns.ObjectPoolPattern.Extras
         {
             if (Count > 0)
             {
-                item = pool.Pop(); // using base field directly
+                item = (T)pool.Pop(); // using base field directly
                 return true;
             }
 

@@ -4,55 +4,81 @@ using VT.Patterns.SingletonPattern;
 
 namespace VT.Patterns.ObjectPoolPattern.Extras
 {
+    /// <summary>
+    /// Centralized manager for all object pools. Handles creation, instance tracking, spawn & release.
+    /// </summary>
     public class ObjectPoolManager : Singleton<ObjectPoolManager>
     {
-        private readonly Dictionary<string, object> pools = new();
+        // Map from prefab asset -> its pool
+        private readonly Dictionary<IPooledObject, IObjectPool> poolsByPrefab = new();
+        // Map each spawned instance -> its originating pool
+        private readonly Dictionary<IPooledObject, IObjectPool> instanceToPool = new();
 
-        public void AddPool<T>(ObjectPool<T> pool) where T : PooledObject
+        /// <summary>
+        /// Get or create a pool for the given prefab.
+        /// </summary>
+        public ObjectPool<T> GetOrCreatePool<T>(T prefab) where T : MonoBehaviour, IPooledObject
         {
-            if (pools.ContainsKey(pool.PrefabName))
+            if (prefab == null)
             {
-                Debug.LogWarning($"Pool with name {pool.PrefabName} already exists. Overwriting.");
+                Debug.LogWarning("ObjectPoolManager: prefab is null. Cannot create pool.");
+                return null;
             }
 
-            pools[pool.PrefabName] = pool;
-        }
-
-        public ObjectPool<T> GetPool<T>(T prefab) where T : PooledObject
-        {
-            string poolName = GeneratePoolName(prefab);
-
-            if (pools.TryGetValue(poolName, out var poolObj) && poolObj is ObjectPool<T> pool)
+            if (poolsByPrefab.TryGetValue(prefab, out var existing))
             {
-                return pool;
+                return (ObjectPool<T>)existing;
             }
 
-            Debug.LogWarning($"Pool with name {poolName} does not exist.");
-            return null;
-        }
+            var pool = ObjectPool<T>.Create(prefab);
+            poolsByPrefab[prefab] = pool;
 
-        public ObjectPool<T> CreatePool<T>(T prefab, Transform parent = null) where T : PooledObject
-        {
-            string poolName = GeneratePoolName(prefab);
+            // Track instances as they are fetched/returned
+            pool.OnGet += item => instanceToPool[item] = pool;
+            pool.OnReturned += item => instanceToPool.Remove(item);
 
-            if (parent == null)
-            {
-                parent = new GameObject(poolName).transform;
-            }
-
-            ObjectPool<T> pool = ObjectPool<T>.Create(prefab, parent);
-            AddPool(pool);
             return pool;
         }
 
-        public static string GeneratePoolName(PooledObject prefab)
+        /// <summary>
+        /// Convenience method to spawn an instance from the pool.
+        /// </summary>
+        public T Spawn<T>(T prefab) where T : MonoBehaviour, IPooledObject
         {
-            return GeneratePoolName(prefab.name);
+            var pool = GetOrCreatePool(prefab);
+            return (T)pool.Get();
         }
 
-        public static string GeneratePoolName(string prefabName)
+        /// <summary>
+        /// Release a spawned instance back into its pool.
+        /// If no pool tracks this instance, it will be destroyed.
+        /// </summary>
+        public void Release(IPooledObject instance)
         {
-            return prefabName + " Pool";
+            if (instance == null) return;
+
+            if (instanceToPool.TryGetValue(instance, out var pool))
+            {
+                pool.Return(instance);
+            }
+            else
+            {
+                Debug.LogWarning($"ObjectPoolManager: instance '{instance.Name}' not tracked. Destroying.");
+                UnityEngine.Object.Destroy(instance.GameObject);
+            }
+        }
+
+        /// <summary>
+        /// Clears and disposes all pools managed by this manager.
+        /// </summary>
+        public void ClearAll()
+        {
+            foreach (var kv in poolsByPrefab)
+            {
+                kv.Value.Dispose();
+            }
+            poolsByPrefab.Clear();
+            instanceToPool.Clear();
         }
     }
 }

@@ -2,9 +2,13 @@ using UnityEngine;
 
 namespace VT.Patterns.ObjectPoolPattern
 {
-    public class PooledObject : MonoBehaviour, IPoolable
+    public abstract class PooledObject : MonoBehaviour, IPooledObject
     {
-        public GameObject SourcePrefab;
+        public GameObject SourcePrefab => gameObject;
+
+        public string Name => name;
+
+        public GameObject GameObject => gameObject;
 
         public virtual void OnReturnedToPool()
         {
