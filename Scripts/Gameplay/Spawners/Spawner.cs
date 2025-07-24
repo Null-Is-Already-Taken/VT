@@ -25,6 +25,7 @@ namespace VT.Gameplay.Spawners
         {
             if (spawnStrategy != null && locationProvider != null && prefabProvider != null)
             {
+                prefabProvider.Initialize();
                 spawnStrategy.Initialize(this);
                 Log("Initialized with default providers/strategy.");
                 StartSpawning();
@@ -40,6 +41,16 @@ namespace VT.Gameplay.Spawners
             StopSpawning();
             spawnStrategy?.Reset();
             Log("Spawner disabled. Stopped spawning and reset strategy.");
+        }
+
+        private void OnDestroy()
+        {
+            // Clean up any remaining active objects
+            if (prefabProvider != null)
+            {
+                // Note: This would require tracking active objects
+                // For now, rely on individual NotifyDespawn calls
+            }
         }
 
         public void StartSpawning()
@@ -64,6 +75,7 @@ namespace VT.Gameplay.Spawners
         public void NotifyDespawn(GameObject obj)
         {
             ActiveCount = Mathf.Max(0, ActiveCount - 1);
+            prefabProvider?.ReturnPrefab(obj); // Return to pool
             Log($"Despawned: {obj.name}. ActiveCount={ActiveCount}");
         }
 
@@ -80,20 +92,18 @@ namespace VT.Gameplay.Spawners
                     continue;
                 }
 
-                var dt = Time.deltaTime;
+                float dt = Time.deltaTime;
                 spawnStrategy.Update(dt);
 
                 if (spawnStrategy.ShouldSpawn())
                 {
-                    var prefab = prefabProvider.GetPrefab();
-                    Log($"Provided prefab: {prefab}");
-
-                    var position = locationProvider.GetSpawnLocation();
+                    Vector3 position = locationProvider.GetSpawnLocation();
                     Log($"Spawn location: {position}");
 
-                    if (prefab != null)
+                    GameObject obj = prefabProvider.GetPrefab();
+                    if (obj != null)
                     {
-                        GameObject obj = Instantiate(prefab, position, Quaternion.identity);
+                        obj.transform.SetPositionAndRotation(position, Quaternion.identity);
                         ActiveCount++;
                         Log($"Spawned: {obj.name} at {position}. ActiveCount={ActiveCount}");
                         OnSpawn?.Invoke(obj);
