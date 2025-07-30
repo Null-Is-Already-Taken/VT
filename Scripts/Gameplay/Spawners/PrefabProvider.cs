@@ -1,7 +1,7 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using VT.Patterns.ObjectPoolPattern;
-using VT.Patterns.ObjectPoolPattern.Extras;
 
 namespace VT.Gameplay.Spawners
 {
@@ -15,25 +15,32 @@ namespace VT.Gameplay.Spawners
         /// </summary>
         public List<GameObject> Prefabs = new();
 
+        public event Action<GameObject> OnGet = _ => { };
+        public event Action<GameObject> OnReturned = _ => { };
+
         /// <summary>
         /// Initializes pools for each prefab. Call once (e.g., in Awake or OnEnable).
         /// </summary>
         public void Initialize(int preloadEach = 0)
         {
+            if (isInitialized) return;
+
             foreach (var go in Prefabs)
             {
                 if (go.TryGetComponent<PooledObject>(out var pooledObject))
                 {
                     // Create or fetch the pool and optionally preload
-                    var pool = ObjectPoolManager.Instance.GetOrCreatePool(pooledObject);
+                    ObjectPool<PooledObject> pool = ObjectPoolManager.Instance.GetOrCreatePool(pooledObject);
+                    
+                    pool.OnGet += (item) => OnGet(item.GetGameObject());
+                    pool.OnReturned += (item) => OnReturned(item.GetGameObject());
+                    
                     if (preloadEach > 0)
                         pool.Preload(preloadEach);
                 }
-                else
-                {
-                    Debug.LogWarning($"PrefabProvider: {go.name} missing PooledObject component.");
-                }
             }
+
+            isInitialized = true;
         }
 
         /// <summary>
@@ -45,8 +52,13 @@ namespace VT.Gameplay.Spawners
             if (go != null && go.TryGetComponent<PooledObject>(out var pooledObject))
             {
                 // Spawn via manager and return its GameObject
-                var instance = ObjectPoolManager.Instance.Spawn(pooledObject);
-                return instance.GameObject;
+                var instance = ObjectPoolManager.Instance.Get(pooledObject);
+                if (instance == null)
+                {
+                    Debug.LogWarning($"PrefabProvider: Failed to get instance for prefab {go.name}. Returning null.");
+                    return null;
+                }
+                return instance.gameObject;
             }
             return null;
         }
@@ -60,12 +72,12 @@ namespace VT.Gameplay.Spawners
 
             if (instance.TryGetComponent<PooledObject>(out var pooledObject))
             {
-                ObjectPoolManager.Instance.Release(pooledObject);
+                ObjectPoolManager.Instance.Return(pooledObject);
             }
             else
             {
                 // Fallback: destroy if it's not a pooled object
-                Object.Destroy(instance);
+                UnityEngine.Object.Destroy(instance);
             }
         }
 
@@ -73,5 +85,7 @@ namespace VT.Gameplay.Spawners
         /// Strategy hook: pick which prefab to spawn next.
         /// </summary>
         public abstract GameObject QueryNextPrefab();
+
+        protected bool isInitialized = false;
     }
 }
