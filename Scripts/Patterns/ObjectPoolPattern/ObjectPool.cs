@@ -110,11 +110,13 @@ namespace VT.Patterns.ObjectPoolPattern
         {
             while (pool.Count > 0)
             {
-                if (pool.Peek() == null) continue; // Skip null items
+                var entry = pool.Pop();
+                if (entry == null)
+                    continue;
 
-                if (pool.Peek().GetGameObject() == null) continue; // Skip if GameObject is null
-
-                UnityEngine.Object.Destroy(pool.Pop().GetGameObject());
+                var go = entry.GetGameObject();
+                if (go != null)
+                    UnityEngine.Object.Destroy(go);
             }
         }
 
