@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using UnityEditor.VersionControl;
 using UnityEngine;
+using UnityEngine.Profiling;
 using VT.Patterns.ObjectPoolPattern;
 
 namespace VT.Gameplay.Spawners
@@ -86,6 +88,97 @@ namespace VT.Gameplay.Spawners
         /// </summary>
         public abstract GameObject QueryNextPrefab();
 
+        private readonly SpawnRegistrar spawnRegistrar = new();
+        private readonly DespawnRegistrar despawnRegistrar = new();
+
+        public void AttachSpawnHandler(Action<GameObject> handler)
+        {
+            spawnRegistrar.Attach(this, handler);
+        }
+
+        public void DetachSpawnHandler()
+        {
+            spawnRegistrar.Detach(this);
+        }
+        
+        public void AttachDespawnHandler(Action<GameObject> handler)
+        {
+            despawnRegistrar.Attach(this, handler);
+        }
+
+        public void DetachDespawnHandler()
+        {
+            despawnRegistrar.Detach(this);
+        }
+
         protected bool isInitialized = false;
+    }
+
+    internal class SpawnRegistrar
+    {
+        // we store the wrapped handlers per pool so we can detach them later
+        private readonly Dictionary<IObjectPool, Action<IPooledObject>> _wrapped = new();
+
+        public void Attach(PrefabProvider provider, Action<GameObject> handler)
+        {
+            foreach (var go in provider.Prefabs)
+            {
+                if (!go.TryGetComponent<PooledObject>(out var po)) continue;
+                var pool = ObjectPoolManager.Instance.GetOrCreatePool(po);
+
+                // wrap the IPooledObject callback in a GameObject callback
+                void wrap(IPooledObject item) => handler(item.GetGameObject());
+
+                pool.OnGet += wrap;
+                _wrapped[pool] = wrap;
+            }
+        }
+
+        public void Detach(PrefabProvider provider)
+        {
+            foreach (var go in provider.Prefabs)
+            {
+                if (!go.TryGetComponent<PooledObject>(out var po)) continue;
+                var pool = ObjectPoolManager.Instance.GetPool(po);
+                if (pool != null && _wrapped.TryGetValue(pool, out var wrap))
+                {
+                    pool.OnGet -= wrap;
+                    _wrapped.Remove(pool);
+                }
+            }
+        }
+    }
+
+    internal class DespawnRegistrar
+    {
+        private readonly Dictionary<IObjectPool, Action<IPooledObject>> _wrapped = new();
+
+        public void Attach(PrefabProvider provider, Action<GameObject> handler)
+        {
+            foreach (var go in provider.Prefabs)
+            {
+                if (!go.TryGetComponent<PooledObject>(out var po)) continue;
+                var pool = ObjectPoolManager.Instance.GetOrCreatePool(po);
+
+                void wrap(IPooledObject item) => handler(item.GetGameObject());
+
+                pool.OnReturned += wrap;
+                _wrapped[pool] = wrap;
+            }
+        }
+
+        public void Detach(PrefabProvider provider)
+        {
+            foreach (var go in provider.Prefabs)
+            {
+                if (!go.TryGetComponent<PooledObject>(out var po)) continue;
+                var pool = ObjectPoolManager.Instance.GetPool(po);
+                if (pool != null && _wrapped.TryGetValue(pool, out var wrap))
+                {
+                    pool.OnReturned -= wrap;
+                    _wrapped.Remove(pool);
+                }
+            }
+        }
     }
 }
