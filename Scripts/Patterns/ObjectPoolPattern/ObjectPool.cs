@@ -9,7 +9,6 @@ namespace VT.Patterns.ObjectPoolPattern
     public interface IPooledObject
     {
         string Name { get; }
-        GameObject GameObject { get; }
         void OnSpawned();
         void OnReturnedToPool();
     }
@@ -19,6 +18,9 @@ namespace VT.Patterns.ObjectPoolPattern
         IPooledObject Prefab { get; }
         Transform Parent { get; }
         public int Count { get; }
+
+        event Action<IPooledObject> OnGet;
+        event Action<IPooledObject> OnReturned;
 
         T GetCasted<T>() where T : MonoBehaviour, IPooledObject;
         IPooledObject Get();
@@ -34,10 +36,10 @@ namespace VT.Patterns.ObjectPoolPattern
     {
         #region Factory
 
-        public static ObjectPool<T> Create(T prefab)
+        public static ObjectPool<T> Create(T prefab, Transform container = null)
         {
             if (prefab == null) return null;
-            return new(prefab);
+            return new(prefab, container);
         }
 
         #endregion
@@ -48,7 +50,7 @@ namespace VT.Patterns.ObjectPoolPattern
         #region IObjectPool Implementation
 
         public IPooledObject Prefab => prefab;
-        public Transform Parent => parent;
+        public Transform Parent => objectContainer;
         public int Count => pool.Count;
 
         public U GetCasted<U>() where U : MonoBehaviour, IPooledObject => (U)Get();
@@ -62,13 +64,13 @@ namespace VT.Patterns.ObjectPoolPattern
             }
             else
             {
-                var go = UnityEngine.Object.Instantiate(prefab, parent);
+                var go = UnityEngine.Object.Instantiate(prefab, objectContainer);
                 go.name = prefab.Name;
                 item = go.GetComponent<T>();
             }
 
             Activate(item);
-            OnGet.Invoke(item);
+            OnGet?.Invoke(item);
             return item;
         }
 
@@ -76,7 +78,7 @@ namespace VT.Patterns.ObjectPoolPattern
         {
             if (item == null) return;
             Deactivate(item);
-            OnReturned.Invoke(item);
+            OnReturned?.Invoke(item);
             pool.Push(item);
         }
 
@@ -86,7 +88,7 @@ namespace VT.Patterns.ObjectPoolPattern
             {
                 item = pool.Pop();
                 Activate(item);
-                OnGet.Invoke(item);
+                OnGet?.Invoke(item);
                 return true;
             }
             item = null;
@@ -97,9 +99,8 @@ namespace VT.Patterns.ObjectPoolPattern
         {
             for (int i = 0; i < count; i++)
             {
-                T item = UnityEngine.Object.Instantiate(prefab, parent);
+                T item = UnityEngine.Object.Instantiate(prefab, objectContainer);
                 item.name = prefab.name;
-                //Return(item);
                 Deactivate(item);
                 pool.Push(item);
             }
@@ -109,14 +110,23 @@ namespace VT.Patterns.ObjectPoolPattern
         {
             while (pool.Count > 0)
             {
-                UnityEngine.Object.Destroy(pool.Pop().GameObject);
+                if (pool.Peek() == null) continue; // Skip null items
+
+                if (pool.Peek().GetGameObject() == null) continue; // Skip if GameObject is null
+
+                UnityEngine.Object.Destroy(pool.Pop().GetGameObject());
             }
         }
 
         public void ClearAndDestroy()
         {
             Clear();
-            UnityEngine.Object.Destroy(parent.gameObject);
+
+            if (objectContainer)
+            {
+                UnityEngine.Object.Destroy(objectContainer.gameObject);
+                objectContainer = null;
+            }
         }
 
         #endregion
@@ -148,18 +158,19 @@ namespace VT.Patterns.ObjectPoolPattern
 
         protected T prefab;
         protected Stack<IPooledObject> pool = new();
-        protected Transform parent;
+        protected Transform objectContainer;
         protected bool isDisposed = false;
 
-        protected ObjectPool(T prefab)
+        protected ObjectPool(T prefab, Transform container = null)
         {
             this.prefab = prefab;
-            parent = new GameObject($"{prefab.name} Pool").transform;
+            objectContainer = new GameObject($"{prefab.name} Pool").transform;
+            objectContainer.SetParent(container, false);
         }
 
         protected T CreateNew()
         {
-            var go = UnityEngine.Object.Instantiate(prefab, parent);
+            var go = UnityEngine.Object.Instantiate(prefab, objectContainer);
             go.name = prefab.Name;
             return go;
         }
@@ -167,19 +178,40 @@ namespace VT.Patterns.ObjectPoolPattern
         protected void Activate(IPooledObject item)
         {
             if (item == null) return;
-            item.GameObject.transform.SetParent(null, true);
-            item.GameObject.SetActive(true);
+            item.GetGameObject().transform.SetParent(null, true);
+            item.GetGameObject().SetActive(true);
             item.OnSpawned();
         }
 
         protected void Deactivate(IPooledObject item)
         {
             if (item == null) return;
-            item.GameObject.transform.SetParent(parent, true);
-            item.GameObject.SetActive(false);
+            item.GetGameObject().transform.SetParent(objectContainer, true);
+            item.GetGameObject().SetActive(false);
             item.OnReturnedToPool();
         }
 
         #endregion
+
+        #region Helper Methods
+
+        public override string ToString()
+        {
+            return $"{prefab.Name} Pool ({pool.Count} items)";
+        }
+
+        #endregion
+    }
+
+    public static class IPooledObjectExtensions
+    {
+        public static GameObject GetGameObject(this IPooledObject pooledObject)
+        {
+            if (pooledObject is MonoBehaviour mb)
+            {
+                return mb.gameObject;
+            }
+            return null;
+        }
     }
 }

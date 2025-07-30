@@ -1,8 +1,8 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using VT.Patterns.SingletonPattern;
 
-namespace VT.Patterns.ObjectPoolPattern.Extras
+namespace VT.Patterns.ObjectPoolPattern
 {
     /// <summary>
     /// Centralized manager for all object pools. Handles creation, instance tracking, spawn & release.
@@ -13,6 +13,22 @@ namespace VT.Patterns.ObjectPoolPattern.Extras
         private readonly Dictionary<IPooledObject, IObjectPool> poolsByPrefab = new();
         // Map each spawned instance -> its originating pool
         private readonly Dictionary<IPooledObject, IObjectPool> instanceToPool = new();
+
+        public ObjectPool<T> GetPool<T>(T prefab) where T : MonoBehaviour, IPooledObject
+        {
+            if (prefab == null)
+            {
+                Debug.LogWarning("ObjectPoolManager: prefab is null. Cannot get pool.");
+                return null;
+            }
+
+            if (poolsByPrefab.TryGetValue(prefab, out var existing))
+            {
+                return (ObjectPool<T>)existing;
+            }
+            Debug.LogWarning($"ObjectPoolManager: No pool found for prefab {prefab.name}. Returning null.");
+            return null;
+        }
 
         /// <summary>
         /// Get or create a pool for the given prefab.
@@ -25,12 +41,15 @@ namespace VT.Patterns.ObjectPoolPattern.Extras
                 return null;
             }
 
-            if (poolsByPrefab.TryGetValue(prefab, out var existing))
+            var pool = GetPool(prefab);
+
+            if (pool != null)
             {
-                return (ObjectPool<T>)existing;
+                // Pool already exists, return it
+                return pool;
             }
 
-            var pool = ObjectPool<T>.Create(prefab);
+            pool = ObjectPool<T>.Create(prefab, container: transform);
             poolsByPrefab[prefab] = pool;
 
             // Track instances as they are fetched/returned
@@ -43,9 +62,15 @@ namespace VT.Patterns.ObjectPoolPattern.Extras
         /// <summary>
         /// Convenience method to spawn an instance from the pool.
         /// </summary>
-        public T Spawn<T>(T prefab) where T : MonoBehaviour, IPooledObject
+        public T Get<T>(T prefab) where T : MonoBehaviour, IPooledObject
         {
             var pool = GetOrCreatePool(prefab);
+            Debug.Log("ObjectPoolManager: Getting instance from pool for prefab " + prefab.name);
+            if (pool == null)
+            {
+                Debug.LogWarning($"ObjectPoolManager: No pool found for prefab {prefab.name}. Returning null.");
+                return null;
+            }
             return (T)pool.Get();
         }
 
@@ -53,25 +78,40 @@ namespace VT.Patterns.ObjectPoolPattern.Extras
         /// Release a spawned instance back into its pool.
         /// If no pool tracks this instance, it will be destroyed.
         /// </summary>
-        public void Release(IPooledObject instance)
+        public void Return(IPooledObject instance)
         {
             if (instance == null) return;
 
-            if (instanceToPool.TryGetValue(instance, out var pool))
+            // 1) Log every call and whether we think it’s tracked
+            bool tracked = instanceToPool.ContainsKey(instance);
+
+            if (tracked && instanceToPool.TryGetValue(instance, out var pool))
             {
+                // 2) We found its pool → return it
                 pool.Return(instance);
             }
             else
             {
-                Debug.LogWarning($"ObjectPoolManager: instance '{instance.Name}' not tracked. Destroying.");
-                UnityEngine.Object.Destroy(instance.GameObject);
+                // 3) No mapping found → fallback
+                Destroy(instance.GetGameObject());
+            }
+        }
+
+        public void Return(GameObject go)
+        {
+            if (go == null) return;
+            if (go.TryGetComponent<IPooledObject>(out var pooled))
+                Return(pooled);
+            else
+            {
+                Destroy(go);
             }
         }
 
         /// <summary>
         /// Clears and disposes all pools managed by this manager.
         /// </summary>
-        public void ClearAll()
+        public void CleanUp()
         {
             foreach (var kv in poolsByPrefab)
             {
@@ -79,6 +119,11 @@ namespace VT.Patterns.ObjectPoolPattern.Extras
             }
             poolsByPrefab.Clear();
             instanceToPool.Clear();
+        }
+
+        private void OnDestroy()
+        {
+            CleanUp();
         }
     }
 }

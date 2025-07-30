@@ -4,20 +4,24 @@ namespace VT.Patterns.ObjectPoolPattern
 {
     public abstract class PooledObject : MonoBehaviour, IPooledObject
     {
-        public GameObject SourcePrefab => gameObject;
-
         public string Name => name;
 
-        public GameObject GameObject => gameObject;
+        public GameObject GameObject => gameObject ? gameObject : null;
 
         public virtual void OnReturnedToPool()
         {
-            Debug.Log($"Returning {gameObject.name} to pool.");
         }
 
         public virtual void OnSpawned()
         {
-            Debug.Log($"Spawned {gameObject.name} from pool.");
+        }
+
+        /// <summary>
+        /// Call this whenever you want to return yourself to the pool.
+        /// </summary>
+        protected void ReturnToPool()
+        {
+            ObjectPoolManager.Instance.Return(this);
         }
     }
 }

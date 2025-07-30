@@ -1,7 +1,9 @@
 {
-    "name": "VT.Patterns.ObjectPoolPattern",
-    "rootNamespace": "VT.Patterns.ObjectPoolPattern",
-    "references": [],
+    "name": "VT.Patterns.ObjectPoolPattern.Extras",
+    "rootNamespace": "VT.Patterns.ObjectPoolPattern.Extras",
+    "references": [
+        "GUID:b463ff50b05e5c34cb5240ad196e009c"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

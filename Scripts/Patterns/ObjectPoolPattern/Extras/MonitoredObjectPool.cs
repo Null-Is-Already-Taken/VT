@@ -9,20 +9,20 @@ namespace VT.Patterns.ObjectPoolPattern.Extras
 {
     public class MonitoredObjectPool<T> : ObjectPool<T> where T : MonoBehaviour, IPooledObject
     {
-        public static new MonitoredObjectPool<T> Create(T prefab)
+        public static new MonitoredObjectPool<T> Create(T prefab, Transform container = null)
         {
             if (prefab == null) return null;
-            return new(prefab);
+            return new(prefab, container);
         }
 
         protected MonitoredObjectPool(
             T prefab,
+            Transform container = null,
             MonoBehaviour monitorHost = null,
             int historyLength = 5,
             float monitorInterval = 60f
-        ) : base(prefab)
+        ) : base(prefab, container)
         {
-            this.prefab = prefab;
             this.historyLength = historyLength;
             this.monitorInterval = monitorInterval;
 
