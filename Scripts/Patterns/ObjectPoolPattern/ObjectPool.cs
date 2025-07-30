@@ -10,7 +10,7 @@ namespace VT.Patterns.ObjectPoolPattern
     {
         string Name { get; }
         void OnSpawned();
-        void OnReturnedToPool();
+        void OnReturned();
     }
 
     public interface IObjectPool : IDisposable
@@ -190,7 +190,7 @@ namespace VT.Patterns.ObjectPoolPattern
             if (item == null) return;
             item.GetGameObject().transform.SetParent(objectContainer, true);
             item.GetGameObject().SetActive(false);
-            item.OnReturnedToPool();
+            item.OnReturned();
         }
 
         #endregion

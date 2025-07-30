@@ -8,11 +8,11 @@ namespace VT.Patterns.ObjectPoolPattern
 
         public GameObject GameObject => gameObject ? gameObject : null;
 
-        public virtual void OnReturnedToPool()
+        public virtual void OnSpawned()
         {
         }
 
-        public virtual void OnSpawned()
+        public virtual void OnReturned()
         {
         }
 
