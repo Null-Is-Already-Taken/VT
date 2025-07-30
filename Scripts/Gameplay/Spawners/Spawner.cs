@@ -16,9 +16,6 @@ namespace VT.Gameplay.Spawners
         private Coroutine spawnRoutine;
         private bool isSpawning = false;
 
-        private readonly SpawnRegistrar spawnRegistrar = new();
-        private readonly DespawnRegistrar despawnRegistrar = new();
-
         private void OnEnable()
         {
             SwitchStrategy(spawnStrategy);
@@ -42,8 +39,8 @@ namespace VT.Gameplay.Spawners
         {
             StopSpawning();
             spawnStrategy?.Reset();
-            spawnRegistrar.Detach(prefabProvider, SpawnEventHandler);
-            despawnRegistrar.Detach(prefabProvider, DespawnEventHandler);
+            prefabProvider?.DetachSpawnHandler();
+            prefabProvider?.DetachDespawnHandler();
         }
 
         public void StartSpawning()
@@ -95,7 +92,11 @@ namespace VT.Gameplay.Spawners
         public void SwitchStrategy(SpawnStrategy strategy)
         {
             spawnStrategy = strategy;
-            spawnStrategy.Initialize(this);
+
+            if (spawnStrategy != null)
+            {
+                spawnStrategy.Initialize(this);
+            }
         }
 
         public void SwitchLocationProvider(LocationProvider provider)
@@ -105,16 +106,16 @@ namespace VT.Gameplay.Spawners
 
         public void SwitchPrefabProvider(PrefabProvider provider)
         {
-            if (provider == null) return;
-
-            spawnRegistrar.Detach(prefabProvider, SpawnEventHandler);
-            despawnRegistrar.Detach(prefabProvider, DespawnEventHandler);
-
+            prefabProvider?.DetachSpawnHandler();
+            prefabProvider?.DetachDespawnHandler();
             prefabProvider = provider;
-            prefabProvider.Initialize();
-            
-            spawnRegistrar.Attach(prefabProvider, SpawnEventHandler);
-            despawnRegistrar.Attach(prefabProvider, DespawnEventHandler);
+
+            if (prefabProvider != null)
+            {
+                prefabProvider.Initialize();
+                prefabProvider.AttachSpawnHandler(SpawnEventHandler);
+                prefabProvider.AttachDespawnHandler(DespawnEventHandler);
+            }
         }
     }
 }
