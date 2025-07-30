@@ -65,7 +65,6 @@ namespace VT.Patterns.ObjectPoolPattern
         public T Get<T>(T prefab) where T : MonoBehaviour, IPooledObject
         {
             var pool = GetOrCreatePool(prefab);
-            Debug.Log("ObjectPoolManager: Getting instance from pool for prefab " + prefab.name);
             if (pool == null)
             {
                 Debug.LogWarning($"ObjectPoolManager: No pool found for prefab {prefab.name}. Returning null.");
