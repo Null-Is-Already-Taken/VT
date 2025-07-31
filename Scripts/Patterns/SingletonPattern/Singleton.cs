@@ -9,6 +9,8 @@ namespace VT.Patterns.SingletonPattern
 
         private static T _instance;
 
+        private static bool _isShuttingDown = false;
+
         // Lock object to prevent race conditions for thread safety
         private static readonly object _lock = new();
 
@@ -16,6 +18,12 @@ namespace VT.Patterns.SingletonPattern
         {
             get
             {
+                if (_isShuttingDown)
+                {
+                    Debug.LogWarning($"[{typeof(T).Name}] Instance is shutting down. Returning null.");
+                    return null;
+                }
+
                 if (_instance == null)
                 {
                     lock (_lock)
@@ -55,6 +63,16 @@ namespace VT.Patterns.SingletonPattern
 
         protected virtual void LazyInit()
         {
+        }
+
+        protected virtual void OnDestroy()
+        {
+            // Mark that we’re in teardown, so Instance will return null from now on
+            _isShuttingDown = true;
+
+            // If this was our instance, clear the reference
+            if (_instance == this)
+                _instance = null;
         }
     }
 }
