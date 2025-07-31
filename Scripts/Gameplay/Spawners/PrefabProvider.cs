@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using UnityEditor.VersionControl;
 using UnityEngine;
-using UnityEngine.Profiling;
 using VT.Patterns.ObjectPoolPattern;
 
 namespace VT.Gameplay.Spawners
@@ -124,7 +122,17 @@ namespace VT.Gameplay.Spawners
             foreach (var go in provider.Prefabs)
             {
                 if (!go.TryGetComponent<PooledObject>(out var po)) continue;
-                var pool = ObjectPoolManager.Instance.GetOrCreatePool(po);
+                var pool = ObjectPoolManager.Instance?.GetPool(po);
+
+                if (pool == null)
+                {
+                    Debug.LogWarning($"SpawnRegistrar: No pool found for prefab {go.name}. Skipping.");
+                    continue;
+                }
+                else
+                {
+                    Debug.Log($"SpawnRegistrar: Found pool for prefab {go.name}.");
+                }
 
                 // wrap the IPooledObject callback in a GameObject callback
                 void wrap(IPooledObject item) => handler(item.GetGameObject());
@@ -139,7 +147,7 @@ namespace VT.Gameplay.Spawners
             foreach (var go in provider.Prefabs)
             {
                 if (!go.TryGetComponent<PooledObject>(out var po)) continue;
-                var pool = ObjectPoolManager.Instance.GetPool(po);
+                var pool = ObjectPoolManager.Instance?.GetPool(po);
                 if (pool != null && _wrapped.TryGetValue(pool, out var wrap))
                 {
                     pool.OnGet -= wrap;
@@ -158,7 +166,17 @@ namespace VT.Gameplay.Spawners
             foreach (var go in provider.Prefabs)
             {
                 if (!go.TryGetComponent<PooledObject>(out var po)) continue;
-                var pool = ObjectPoolManager.Instance.GetOrCreatePool(po);
+                var pool = ObjectPoolManager.Instance?.GetPool(po);
+
+                if (pool == null)
+                {
+                    Debug.LogWarning($"DespawnRegistrar: No pool found for prefab {go.name}. Skipping.");
+                    continue;
+                }
+                else
+                {
+                    Debug.Log($"DespawnRegistrar: Found pool for prefab {go.name}.");
+                }
 
                 void wrap(IPooledObject item) => handler(item.GetGameObject());
 
@@ -172,7 +190,7 @@ namespace VT.Gameplay.Spawners
             foreach (var go in provider.Prefabs)
             {
                 if (!go.TryGetComponent<PooledObject>(out var po)) continue;
-                var pool = ObjectPoolManager.Instance.GetPool(po);
+                var pool = ObjectPoolManager.Instance?.GetPool(po);
                 if (pool != null && _wrapped.TryGetValue(pool, out var wrap))
                 {
                     pool.OnReturned -= wrap;
