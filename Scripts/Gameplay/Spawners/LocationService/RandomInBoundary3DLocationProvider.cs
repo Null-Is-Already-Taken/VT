@@ -5,7 +5,7 @@ using VT.Generic;
 namespace VT.Gameplay.Spawners
 {
     [System.Serializable]
-    public class RandomInBoundary3DProvider : LocationProvider
+    public class RandomInBoundary3DLocationProvider : LocationProvider
     {
         public Boundary3D Boundary;
 

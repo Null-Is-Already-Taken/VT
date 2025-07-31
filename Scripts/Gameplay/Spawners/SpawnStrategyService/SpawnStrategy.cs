@@ -2,43 +2,38 @@ using UnityEngine;
 
 namespace VT.Gameplay.Spawners
 {
-    [System.Serializable]
-    public class SpawnUntilNStrategy : SpawnStrategy
+    public abstract class SpawnStrategy
     {
-        [Header("Config")]
-        public int N = 5;
+        [Tooltip("Seconds between spawns.")]
         public float Interval = 1f;
 
-        private ISpawnerContext context;
+        protected ISpawnerContext context;
         private float timer = 0f;
 
-        public override void Initialize(ISpawnerContext context)
+        public virtual void Initialize(ISpawnerContext context)
         {
             this.context = context;
             timer = 0f;
         }
 
-        public override void Update(float deltaTime)
+        public virtual void Update(float deltaTime)
         {
             timer += deltaTime;
         }
 
-        public override void Reset()
+        public virtual void Reset()
         {
             timer = 0f;
         }
 
-        public override bool ShouldSpawn()
+        public virtual bool ShouldSpawn()
         {
             if (context == null)
-            {
                 return false;
-            }
 
-            if (context.ActiveCount >= N)
-            {
+            // enforce strategy-specific cap
+            if (context.ActiveCount >= GetMaxActive())
                 return false;
-            }
 
             if (timer >= Interval)
             {
@@ -49,6 +44,9 @@ namespace VT.Gameplay.Spawners
             return false;
         }
 
-        public override int GetMaxActive() => N;
+        /// <summary>
+        /// How many can be active before we stop spawning?
+        /// </summary>
+        public abstract int GetMaxActive();
     }
 }
