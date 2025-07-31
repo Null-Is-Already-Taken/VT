@@ -112,7 +112,7 @@ namespace VT.Patterns.ObjectPoolPattern
         /// </summary>
         public void CleanUp()
         {
-            foreach (var kv in poolsByPrefab)
+            foreach (KeyValuePair<IPooledObject, IObjectPool> kv in poolsByPrefab)
             {
                 kv.Value.Dispose();
             }
@@ -120,9 +120,10 @@ namespace VT.Patterns.ObjectPoolPattern
             instanceToPool.Clear();
         }
 
-        private void OnDestroy()
+        protected override void OnDestroy()
         {
             CleanUp();
+            base.OnDestroy();
         }
     }
 }
