@@ -1,7 +1,7 @@
+#if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using VT.Extensions;
 using VT.IO;
 
 namespace VT.PackageManager
@@ -46,3 +46,4 @@ namespace VT.PackageManager
         }
     }
 }
+#endif

@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System;
 
 namespace VT.PackageManager
@@ -10,3 +11,4 @@ namespace VT.PackageManager
         public string sha256Hash; // optional
     }
 }
+#endif
