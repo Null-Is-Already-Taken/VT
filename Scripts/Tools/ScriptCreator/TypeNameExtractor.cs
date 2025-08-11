@@ -1,3 +1,5 @@
+#if UNITY_EDITOR
+
 //using System.Linq;
 //using Microsoft.CodeAnalysis;
 //using Microsoft.CodeAnalysis.CSharp;
@@ -66,3 +68,4 @@ namespace VT.Tools.ScriptCreator
         }
     }
 }
+#endif

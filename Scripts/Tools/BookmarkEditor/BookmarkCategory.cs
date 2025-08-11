@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System.Collections.Generic;
 using UnityEngine;
 using VT.Extensions;
@@ -45,3 +46,4 @@ namespace VT.Tools.BookmarkEditor
         #endregion
     }
 }
+#endif

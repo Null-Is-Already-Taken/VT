@@ -1,10 +1,10 @@
-﻿using System;
+﻿#if UNITY_EDITOR
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using VT.Editor.Utils;
 using VT.Extensions;
 using VT.IO;
-using VT.Logger;
 
 namespace VT.Tools.EssentialAssetsImporter
 {
@@ -157,3 +157,4 @@ namespace VT.Tools.EssentialAssetsImporter
         }
     }
 }
+#endif

@@ -1,4 +1,4 @@
-#if ODIN_INSPECTOR
+#if UNITY_EDITOR && ODIN_INSPECTOR
 // Preview data class
 using Sirenix.OdinInspector;
 using System.IO;

@@ -1,4 +1,5 @@
-﻿using UnityEditor;
+﻿#if UNITY_EDITOR
+using UnityEditor;
 using UnityEngine;
 using VT.Editor.Utils;
 using VT.IO;
@@ -51,3 +52,4 @@ namespace VT.Editor.GUI
         }
     }
 }
+#endif

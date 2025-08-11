@@ -1,8 +1,8 @@
+#if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
 
-#if UNITY_EDITOR
 namespace VT.Tools.BookmarkEditor
 {
     public class BookmarkEditorWindow : EditorWindow

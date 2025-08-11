@@ -1,28 +1,37 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
-using VT.Logger;
 
 namespace VT.Extensions
 {
     public static class EnumerableExtensions
     {
+        /// <summary>
+        /// Prints each item on its own line using the internal Extensions logger.
+        /// Optional label becomes the log 'context' (e.g., collection name).
+        /// </summary>
         public static void Print<T>(
             this IEnumerable<T> collection,
-            params LogStyle[] styles)
+            string label = null,
+            LogLevel level = LogLevel.Debug)
         {
-            if (collection == null)
-            {
-                Debug.Log("Collection is null");
-                return;
-            }
+            if (collection == null) return;
 
-            var style = LogStyle.Compose(styles);
+            var logger = ExtensionsLogger.Logger;
+            int index = 0;
 
             foreach (var item in collection)
             {
-                string output = item?.ToString();
-                InternalLogger.Instance.LogDebug(style?.Apply(output) ?? output);
+                string text = item?.ToString() ?? "null";
+                // Example format: add index prefix for readability
+                string line = $"[{index++}] {text}";
+
+                switch (level)
+                {
+                    case LogLevel.Trace: logger.LogTrace(line, label); break;
+                    case LogLevel.Warning: logger.LogWarning(line, label); break;
+                    case LogLevel.Error: logger.LogError(line, label); break;
+                    default: logger.LogDebug(line, label); break;
+                }
             }
         }
     }

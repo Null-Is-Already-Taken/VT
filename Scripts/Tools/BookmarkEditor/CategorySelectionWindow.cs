@@ -1,9 +1,9 @@
+#if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
 using System.Linq;
 
-#if UNITY_EDITOR
 namespace VT.Tools.BookmarkEditor
 {
     public class CategorySelectionWindow : EditorWindow
